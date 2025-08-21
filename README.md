@@ -12,6 +12,7 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is specifica
 - Track monthly energy consumption across multiple sources:
   - **Scope 1**: Natural gas, diesel generators, waste oil burning, vehicle fleets, forklifts, refrigerants, welding gases
   - **Scope 2**: Purchased electricity (state-specific factors), purchased steam/heat
+- Support both location-based and market-based Scope 2 reporting methods
 - Monitor emission reduction initiatives and their impact
 - Generate professional reports with executive summaries
 - Calculate emissions intensity (kg CO₂e per tonne of lubricant produced)
@@ -24,7 +25,7 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is specifica
 
 No installation required! Simply:
 
-1. Download the latest calculator file (`ala-ghg-calculator-v3.3.html`)
+1. Download the latest calculator file (`ala-ghg-calculator-v4.1.html`)
 2. Double-click the file to open it in your web browser
 3. The calculator runs entirely in your browser - no server or internet connection needed
 
@@ -39,12 +40,12 @@ For organizational deployment:
    ```
 
 2. Deploy the HTML file to your web server:
-   - Copy `ala-ghg-calculator-v3.3.html` to your web server directory
+   - Copy `ala-ghg-calculator-v4.1.html` to your web server directory
    - Ensure the `ala_logo.png` file is in the same directory (if using external logo)
 
 3. Access through your web browser:
    ```
-   https://your-server.com/ala-ghg-calculator-v3.3.html
+   https://your-server.com/ala-ghg-calculator-v4.1.html
    ```
 
 ### Option 3: Local Development Server
@@ -71,7 +72,7 @@ For development or testing:
 
 3. Open your browser and navigate to:
    ```
-   http://localhost:8000/ala-ghg-calculator-v3.3.html
+   http://localhost:8000/ala-ghg-calculator-v4.1.html
    ```
 
 ## System Requirements
@@ -109,7 +110,9 @@ All calculations are performed locally in your browser. No data is sent to exter
 
 ## Version History
 
-- **v3.3** (Current) - Latest stable release
+- **v4.1** (Current) - Critical fixes for market-based Scope 2 calculations and Green Power double-counting prevention
+- **v4.0** - Updated with official NGA 2024 emission factors, added market-based reporting
+- **v3.3** - Enhanced PDF export functionality and UI improvements
 - **v3.2** - Previous stable version with table width optimizations
 - **v3.1** - Added split table architecture for better usability
 - **v3.0** - Resolved table width issues, added view toggles and print optimization
@@ -135,12 +138,25 @@ To report issues or suggest improvements:
 ## Important Notes
 
 ### Emission Factors
-The calculator uses emission factors from:
+The calculator uses the latest emission factors from:
 - National Greenhouse and Energy Reporting (NGER) scheme
-- National Greenhouse Accounts Factors (2024 edition)
+- National Greenhouse Accounts Factors (NGA 2024 edition)
 - Clean Energy Regulator guidelines
 
-**Note**: Emission factors should be verified and updated annually to maintain compliance.
+**Version 4.1 Updates (Technical Corrections)**:
+- Fixed market-based Scope 2 calculations to use Australian residual mix factor (0.81 kg CO₂e/kWh)
+- RECs credit now properly scales by the relevant grid factor (state factor for location-based, residual mix for market-based)
+- Green Power percentage is now correctly excluded from market-based calculations to prevent double counting
+- UI improvements: Green Power input disabled when market-based method is selected
+
+**Version 4.0 Updates (NGA 2024)**:
+- Energy content factors updated for natural gas, waste oil, and LPG
+- Fuel emission factors aligned with NGA 2024 combined scope 1 values
+- Refrigerant GWP updated to AR5 values (R410A: 1924)
+- State electricity factors updated to latest NGA 2024 values
+- Added residual mix factor (0.81) for market-based reporting
+
+**Note**: Emission factors are current as of NGA 2024 and should be verified annually to maintain compliance.
 
 ### Data Security
 - All data is processed locally in your browser
