@@ -227,6 +227,11 @@
         .close:focus {
             color: black;
         }
+        
+        /* Advanced Scope 1 sources: hidden by default */
+        .scope1-table .advanced-source { display: none; }
+        /* When toggle is on, reveal advanced columns */
+        .scope1-table.show-advanced .advanced-source { display: table-cell; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -447,14 +452,27 @@
                             <span class="tooltip-content">Direct emissions from fuel combustion and fugitive sources</span>
                         </span>
                     </h3>
+                    <div class="flex items-center justify-end gap-2 mb-2">
+                        <label class="text-sm">
+                            <input type="checkbox" id="showAdvancedSources">
+                            Show advanced sources
+                        </label>
+                        <span class="info-icon" aria-label="Advanced sources info">
+                            i
+                            <span class="tooltip-content">
+                                Refrigerant leaks, CO₂ fire discharges and welding gas are uncommon for most blenders.
+                                Leave these at zero unless you have measured data.
+                            </span>
+                        </span>
+                    </div>
                     <div class="table-container">
-                        <table class="w-full border-collapse scope1-table">
+                        <table id="scope1Table" class="w-full border-collapse scope1-table">
                             <thead>
                                 <tr class="bg-gray-100">
                                     <th class="border px-2 py-1 text-left">Month</th>
                                     <th class="border px-2 py-1 text-center" colspan="3">Stationary Combustion</th>
                                     <th class="border px-2 py-1 text-center" colspan="3">Mobile Combustion</th>
-                                    <th class="border px-2 py-1 text-center" colspan="3">Other Direct</th>
+                                    <th class="border px-2 py-1 text-center advanced-source" colspan="3">Other Direct</th>
                                     <th class="border px-2 py-1 text-right">Scope 1 Total</th>
                                 </tr>
                                 <tr class="bg-gray-50 text-sm">
@@ -465,9 +483,31 @@
                                     <th class="border px-2 py-1">Diesel Veh<br>(L)</th>
                                     <th class="border px-2 py-1">Petrol<br>(L)</th>
                                     <th class="border px-2 py-1">LPG<br>(L)</th>
-                                    <th class="border px-2 py-1">Refrigerant<br>(kg)</th>
-                                    <th class="border px-2 py-1">CO₂ Fire<br>(kg)</th>
-                                    <th class="border px-2 py-1">Welding<br>(kg CO₂)</th>
+                                    <th class="border border-gray-300 px-2 py-2 text-right whitespace-nowrap advanced-source">
+                                        Refrigerant (kg)
+                                        <span class="info-icon">i
+                                            <span class="tooltip-content">
+                                                Enter only if you have measured refrigerant losses (e.g. HVAC or process chillers).
+                                                Most blenders will leave this as zero.
+                                            </span>
+                                        </span>
+                                    </th>
+                                    <th class="border border-gray-300 px-2 py-2 text-right whitespace-nowrap advanced-source">
+                                        CO₂ Fire (kg)
+                                        <span class="info-icon">i
+                                            <span class="tooltip-content">
+                                                Quantity of CO₂ discharged from fire suppression. Usually zero except in a genuine discharge event.
+                                            </span>
+                                        </span>
+                                    </th>
+                                    <th class="border border-gray-300 px-2 py-2 text-right whitespace-nowrap advanced-source">
+                                        Welding CO₂ (kg)
+                                        <span class="info-icon">i
+                                            <span class="tooltip-content">
+                                                CO₂ used for welding and shielding. Typically immaterial for blenders; leave at zero unless tracked.
+                                            </span>
+                                        </span>
+                                    </th>
                                     <th class="border px-2 py-1">t CO₂e</th>
                                 </tr>
                             </thead>
@@ -483,9 +523,9 @@
                                     <td class="border px-2 py-1 text-right" id="total-dieselVehicles">0</td>
                                     <td class="border px-2 py-1 text-right" id="total-petrol">0</td>
                                     <td class="border px-2 py-1 text-right" id="total-lpg">0</td>
-                                    <td class="border px-2 py-1 text-right" id="total-refrigerant">0</td>
-                                    <td class="border px-2 py-1 text-right" id="total-co2Fire">0</td>
-                                    <td class="border px-2 py-1 text-right" id="total-weldingGas">0</td>
+                                    <td class="border px-2 py-1 text-right advanced-source" id="total-refrigerant">0</td>
+                                    <td class="border px-2 py-1 text-right advanced-source" id="total-co2Fire">0</td>
+                                    <td class="border px-2 py-1 text-right advanced-source" id="total-weldingGas">0</td>
                                     <td class="border px-2 py-1 text-right" id="total-scope1">0</td>
                                 </tr>
                             </tfoot>
@@ -502,6 +542,17 @@
                             <span class="tooltip-content">Indirect emissions from purchased electricity and steam</span>
                         </span>
                     </h3>
+                    <div class="text-sm text-gray-600 flex items-center justify-end mb-2">
+                        <label for="steamEF" class="mr-2">Steam/Heat EF (t CO₂e/GJ)</label>
+                        <input id="steamEF" type="number" min="0" step="0.001"
+                               class="w-24 border border-gray-300 rounded px-2 py-1 text-right" value="0.060">
+                        <span class="info-icon">i
+                            <span class="tooltip-content">
+                                Steam/heat emissions use a default 0.060 t CO₂e/GJ. If your supplier provides an emissions factor,
+                                enter it here for higher accuracy.
+                            </span>
+                        </span>
+                    </div>
                     <div class="table-container">
                         <table class="w-full border-collapse scope2-table">
                             <thead>
@@ -1141,6 +1192,30 @@
             checkForExistingData();
             setupInfoIcons();
             setupEnterNavigation();
+            
+            // Initialize Steam/Heat EF input
+            const steamEFEl = document.getElementById('steamEF');
+            if (steamEFEl) {
+                // Seed from constant
+                if (typeof EMISSION_FACTORS?.fuelEmissions?.steamHeat === 'number') {
+                    steamEFEl.value = EMISSION_FACTORS.fuelEmissions.steamHeat.toFixed(3);
+                }
+
+                // Update constant and recalc when user changes it
+                steamEFEl.addEventListener('input', () => {
+                    const v = parseFloat(steamEFEl.value);
+                    if (!isNaN(v) && v >= 0) {
+                        EMISSION_FACTORS.fuelEmissions.steamHeat = v;
+
+                        // Recalculate monthly and annual totals
+                        currentMonths.forEach((_, idx) => updateMonthlyTotals(idx));
+                        updateAnnualTotals();
+
+                        // Persist
+                        saveData();
+                    }
+                });
+            }
         });
 
         // Setup info icons
@@ -1156,21 +1231,19 @@
             });
         }
 
-        // Excel-like Enter key navigation
+        // Excel-like Enter key navigation following column-wise tab order
         function setupEnterNavigation() {
-            // Get all input fields in the monthly data tables
-            const inputs = document.querySelectorAll('#monthlyData input[type="number"]');
-            inputs.forEach((input, index) => {
-                input.addEventListener('keypress', function(event) {
-                    if (event.key === 'Enter') {
-                        event.preventDefault();
-                        // Move to next input
-                        if (index + 1 < inputs.length) {
-                            inputs[index + 1].focus();
-                            inputs[index + 1].select();
-                        }
-                    }
-                });
+            document.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter') return;
+                const from = e.target;
+                if (!(from instanceof HTMLInputElement)) return;
+                const nextTab = (from.tabIndex || 0) + 1;
+                const next = document.querySelector(`[tabindex="${nextTab}"]`);
+                if (next) {
+                    e.preventDefault();
+                    next.focus();
+                    if (typeof next.select === 'function') next.select();
+                }
             });
         }
 
@@ -1236,6 +1309,10 @@
                                 document.getElementById('method-location').checked = true;
                                 document.getElementById('method-market').checked = false;
                             }
+                        }
+                        if (sus.steamEF && document.getElementById('steamEF')) {
+                            document.getElementById('steamEF').value = sus.steamEF;
+                            EMISSION_FACTORS.fuelEmissions.steamHeat = parseFloat(sus.steamEF);
                         }
                     }
                     
@@ -1372,6 +1449,17 @@
                 gpInit.disabled = (scope2Method === 'market');
                 gpInit.title = gpInit.disabled ? 'Ignored when Market-based is selected to avoid double counting' : '';
             }
+            
+            // Advanced sources toggle behavior
+            const advToggle = document.getElementById('showAdvancedSources');
+            if (advToggle) {
+                advToggle.addEventListener('change', function() {
+                    const tbl = document.getElementById('scope1Table');
+                    if (!tbl) return;
+                    if (this.checked) tbl.classList.add('show-advanced');
+                    else tbl.classList.remove('show-advanced');
+                });
+            }
         }
 
         // Update month display based on reporting period
@@ -1427,6 +1515,9 @@
             const tbody = document.getElementById('scope1TableBody');
             tbody.innerHTML = '';
             
+            // Helper function to identify advanced fuel sources
+            const isAdvancedFuel = (fuelId) => ['refrigerant','co2Fire','weldingGas'].includes(fuelId);
+            
             // Define fuel order for consistent tabindex
             const fuelOrder = [
                 'naturalGas', 'dieselGenerators', 'wasteOil',
@@ -1450,8 +1541,9 @@
                 // Add input cells for each Scope 1 fuel type
                 ['stationary', 'mobile', 'other'].forEach(category => {
                     FUEL_CATEGORIES.scope1[category].forEach(fuel => {
+                        const advClass = isAdvancedFuel(fuel.id) ? 'advanced-source' : '';
                         html += `
-                            <td class="border px-1 py-1">
+                            <td class="border px-1 py-1 ${advClass}">
                                 <input type="number" 
                                     class="input-cell w-full" 
                                     id="${month}-${fuel.id}"
@@ -2702,7 +2794,8 @@
                     wasteHeatRecovery: document.getElementById('wasteHeatRecovery').value,
                     sustainabilityNotes: document.getElementById('sustainabilityNotes').value,
                     carbonNeutralPercent: document.getElementById('carbonNeutralPercent').value,
-                    scope2Method: scope2Method
+                    scope2Method: scope2Method,
+                    steamEF: document.getElementById('steamEF') ? document.getElementById('steamEF').value : EMISSION_FACTORS.fuelEmissions.steamHeat
                 }
             };
             

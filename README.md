@@ -11,12 +11,14 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is specifica
 - Calculate Scope 1 (direct) and Scope 2 (indirect) emissions
 - Track monthly energy consumption across multiple sources:
   - **Scope 1**: Natural gas, diesel generators, waste oil burning, vehicle fleets, forklifts, refrigerants, welding gases
-  - **Scope 2**: Purchased electricity (state-specific factors), purchased steam/heat
+  - **Scope 2**: Purchased electricity (state-specific factors), purchased steam/heat with customizable emission factors
 - Support both location-based and market-based Scope 2 reporting methods
+- Advanced sources toggle: Hide uncommon emission sources (refrigerants, CO₂ fire systems, welding gases) by default
 - Monitor emission reduction initiatives and their impact
 - Generate professional reports with executive summaries
 - Calculate emissions intensity (kg CO₂e per tonne of lubricant produced)
 - Export data to CSV format
+- Excel-style navigation with Tab and Enter key support
 - Compliant with Australian NGER methodology
 
 ## Installation
@@ -143,11 +145,14 @@ The calculator uses the latest emission factors from:
 - National Greenhouse Accounts Factors (NGA 2024 edition)
 - Clean Energy Regulator guidelines
 
-**Version 4.1 Updates (Technical Corrections)**:
+**Version 4.1 Updates (Technical Corrections & UX Improvements)**:
 - Fixed market-based Scope 2 calculations to use Australian residual mix factor (0.81 kg CO₂e/kWh)
 - RECs credit now properly scales by the relevant grid factor (state factor for location-based, residual mix for market-based)
 - Green Power percentage is now correctly excluded from market-based calculations to prevent double counting
 - UI improvements: Green Power input disabled when market-based method is selected
+- Advanced sources toggle: Refrigerant, CO₂ Fire, and Welding CO₂ columns now hidden by default with optional toggle
+- Supplier-specific Steam/Heat emissions factor input allows override of default 0.060 t CO₂e/GJ value
+- Enhanced Excel-style navigation: Enter key now follows column-wise order matching Tab key behavior
 
 **Version 4.0 Updates (NGA 2024)**:
 - Energy content factors updated for natural gas, waste oil, and LPG
