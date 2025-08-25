@@ -832,6 +832,9 @@
                 <button id="generateReport" class="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-semibold" disabled>
                     Generate Executive Summary
                 </button>
+                <button id="viewFactors" class="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors font-semibold" title="View all emission factors used in calculations">
+                    View Emission Factors
+                </button>
                 <button id="exportData" class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold">
                     Export to CSV
                 </button>
@@ -972,6 +975,33 @@
         <!-- Executive Summary (Hidden until generated) -->
         <section id="executiveSummary" style="display: none;">
             <!-- Executive summary content will be generated here -->
+        </section>
+
+        <!-- Emission Factors Modal (Hidden until triggered) -->
+        <section id="emissionFactorsModal" style="display: none;" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-[#003366]">Emission Factors Reference</h2>
+                        <button id="closeFactorsModal" class="text-gray-500 hover:text-gray-700">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="emissionFactorsContent" class="overflow-y-auto max-h-[70vh]">
+                        <!-- Emission factors content will be generated here -->
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button id="printFactors" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 mr-2">
+                            Print Factors
+                        </button>
+                        <button id="closeFactorsModalBottom" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
         </section>
     </div>
 
@@ -1388,12 +1418,18 @@
             document.getElementById('reportingYear').addEventListener('change', updateMonthDisplay);
             document.getElementById('calculateEmissions').addEventListener('click', calculateEmissions);
             document.getElementById('generateReport').addEventListener('click', generateExecutiveSummary);
+            document.getElementById('viewFactors').addEventListener('click', displayEmissionFactors);
             document.getElementById('exportData').addEventListener('click', exportToCSV);
             // Print/PDF export button
             document.getElementById('printReport').addEventListener('click', printReport);
             document.getElementById('clearData').addEventListener('click', clearAllData);
             document.getElementById('clearMonthlyData').addEventListener('click', clearMonthlyData);
             document.getElementById('validateData').addEventListener('click', validateData);
+            
+            // Emission Factors Modal event listeners
+            document.getElementById('closeFactorsModal').addEventListener('click', closeEmissionFactorsModal);
+            document.getElementById('closeFactorsModalBottom').addEventListener('click', closeEmissionFactorsModal);
+            document.getElementById('printFactors').addEventListener('click', printEmissionFactors);
             
             // Production data
             document.getElementById('annualProduction').addEventListener('input', updateEmissionsIntensity);
@@ -2561,6 +2597,300 @@
             
             // Scroll to summary
             document.getElementById('executiveSummary').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Display Emission Factors Modal
+        function displayEmissionFactors() {
+            const modal = document.getElementById('emissionFactorsModal');
+            const content = document.getElementById('emissionFactorsContent');
+            
+            // Generate the emission factors content
+            content.innerHTML = `
+                <div class="space-y-6">
+                    <!-- Header Information -->
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg text-[#003366] mb-2">Emission Factors Source Information</h3>
+                        <p class="text-sm text-gray-700">
+                            <strong>Primary Source:</strong> National Greenhouse Accounts (NGA) Factors - 2024 Edition<br>
+                            <strong>Published:</strong> August 2024<br>
+                            <strong>Publisher:</strong> Australian Government Department of Climate Change, Energy, the Environment and Water (DCCEEW)<br>
+                            <strong>Source Link:</strong> <a href="https://www.dcceew.gov.au/climate-change/publications/national-greenhouse-accounts-factors" 
+                                target="_blank" class="text-blue-600 underline">NGA Factors 2024</a><br>
+                            <strong>Last Updated in Calculator:</strong> August 2025
+                        </p>
+                    </div>
+
+                    <!-- Fuel Combustion Factors -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Fuel Combustion Emission Factors</h3>
+                        <table class="w-full border-collapse border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Fuel Type</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Energy Content</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Emission Factor</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">NGA Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Natural Gas</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.0393 GJ/m³</td>
+                                    <td class="border border-gray-300 px-4 py-2">51.53 kg CO₂e/GJ</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 5</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">Diesel (Generators)</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.0386 GJ/L</td>
+                                    <td class="border border-gray-300 px-4 py-2">70.20 kg CO₂e/GJ</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 8</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Diesel (Vehicles)</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.0386 GJ/L</td>
+                                    <td class="border border-gray-300 px-4 py-2">70.20 kg CO₂e/GJ</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 9</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">Petrol</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.0342 GJ/L</td>
+                                    <td class="border border-gray-300 px-4 py-2">67.40 kg CO₂e/GJ</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 9</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">LPG</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.0262 GJ/L</td>
+                                    <td class="border border-gray-300 px-4 py-2">60.20 kg CO₂e/GJ</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 9</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">Waste Oil</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.0397 GJ/L</td>
+                                    <td class="border border-gray-300 px-4 py-2">74.50 kg CO₂e/GJ</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 8</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Steam/Heat Purchase</td>
+                                    <td class="border border-gray-300 px-4 py-2">1.0 GJ/GJ</td>
+                                    <td class="border border-gray-300 px-4 py-2">${EMISSION_FACTORS.fuelEmissions.steamHeat.toFixed(2)} kg CO₂e/GJ *</td>
+                                    <td class="border border-gray-300 px-4 py-2">User-defined</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="text-xs text-gray-600 mt-1">* Steam/Heat emission factor can be customized based on supplier data</p>
+                    </div>
+
+                    <!-- Electricity Grid Factors -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Electricity Grid Emission Factors (Location-based)</h3>
+                        <table class="w-full border-collapse border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-2 text-left">State/Territory</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Emission Factor (kg CO₂e/kWh)</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">NGA Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">NSW/ACT</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.66</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">Victoria</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.77</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Queensland</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.71</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">South Australia</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.23</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Western Australia (SWIS)</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.51</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">Western Australia (NWIS)</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.61</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Tasmania</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.15</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">Northern Territory</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.56</td>
+                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Market-based Factor -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Market-based Emission Factor</h3>
+                        <table class="w-full border-collapse border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Factor Type</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Value</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Australian Residual Mix</td>
+                                    <td class="border border-gray-300 px-4 py-2">0.81 kg CO₂e/kWh</td>
+                                    <td class="border border-gray-300 px-4 py-2">Used for market-based Scope 2 calculations</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Other Direct Emissions -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Other Direct Emission Factors</h3>
+                        <table class="w-full border-collapse border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Source</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">GWP/Factor</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Unit</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Refrigerant (R410A default)</td>
+                                    <td class="border border-gray-300 px-4 py-2">1,924</td>
+                                    <td class="border border-gray-300 px-4 py-2">kg CO₂e/kg</td>
+                                    <td class="border border-gray-300 px-4 py-2">NGA Table 11 (AR5)</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">CO₂ Fire Systems</td>
+                                    <td class="border border-gray-300 px-4 py-2">1</td>
+                                    <td class="border border-gray-300 px-4 py-2">kg CO₂e/kg</td>
+                                    <td class="border border-gray-300 px-4 py-2">Direct CO₂</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">Welding Gases (CO₂)</td>
+                                    <td class="border border-gray-300 px-4 py-2">1</td>
+                                    <td class="border border-gray-300 px-4 py-2">kg CO₂e/kg</td>
+                                    <td class="border border-gray-300 px-4 py-2">Direct CO₂</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Common Refrigerant GWP Values -->
+                    <div>
+                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Common Refrigerant GWP Values (IPCC AR5)</h3>
+                        <table class="w-full border-collapse border border-gray-300">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Refrigerant</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">GWP (100-year)</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left">Common Use</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">R134a</td>
+                                    <td class="border border-gray-300 px-4 py-2">1,300</td>
+                                    <td class="border border-gray-300 px-4 py-2">Automotive, chillers</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">R410A</td>
+                                    <td class="border border-gray-300 px-4 py-2">1,924</td>
+                                    <td class="border border-gray-300 px-4 py-2">Split systems (default)</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">R32</td>
+                                    <td class="border border-gray-300 px-4 py-2">677</td>
+                                    <td class="border border-gray-300 px-4 py-2">Modern split systems</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-gray-300 px-4 py-2">R404A</td>
+                                    <td class="border border-gray-300 px-4 py-2">3,943</td>
+                                    <td class="border border-gray-300 px-4 py-2">Commercial refrigeration</td>
+                                </tr>
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2">R507A</td>
+                                    <td class="border border-gray-300 px-4 py-2">3,985</td>
+                                    <td class="border border-gray-300 px-4 py-2">Low temperature refrigeration</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="text-xs text-gray-600 mt-1">Source: IPCC Fifth Assessment Report (AR5), referenced in NGA 2024 Table 11</p>
+                    </div>
+
+                    <!-- Additional Information -->
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-sm text-gray-700 mb-2">Important Notes:</h4>
+                        <ul class="text-sm text-gray-600 list-disc ml-5 space-y-1">
+                            <li>All emission factors are sourced from the National Greenhouse Accounts Factors 2024 Edition unless otherwise noted</li>
+                            <li>Factors are updated annually when new NGA editions are released</li>
+                            <li>The calculator uses Scope 1 and Scope 2 emission factors only</li>
+                            <li>For detailed methodology, refer to the full NGA Factors document at the DCCEEW website</li>
+                            <li>Steam/Heat emission factors should be obtained from your specific supplier where available</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            // Show the modal
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        // Close emission factors modal
+        function closeEmissionFactorsModal() {
+            const modal = document.getElementById('emissionFactorsModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Re-enable scrolling
+        }
+
+        // Print emission factors
+        function printEmissionFactors() {
+            const content = document.getElementById('emissionFactorsContent').innerHTML;
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Emission Factors Reference - ALA GHG Calculator</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+                        th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                        h3 { color: #003366; margin-top: 20px; }
+                        .bg-blue-50 { background-color: #e6f2ff; padding: 10px; margin: 10px 0; }
+                        .bg-yellow-50 { background-color: #fffce6; padding: 10px; margin: 10px 0; }
+                        @media print { 
+                            body { margin: 10px; }
+                            .no-print { display: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1 style="color: #003366;">ALA GHG Calculator - Emission Factors Reference</h1>
+                    ${content}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
         }
 
         // Export to CSV
