@@ -702,7 +702,7 @@
                             Green Power Purchase
                             <span class="info-icon" data-info="green-power">
                                 i
-                                <span class="tooltip-content">Percentage of grid electricity from renewable sources</span>
+                                <span class="tooltip-content">LOCATION-BASED ONLY: Percentage of grid electricity from renewable sources. Automatically disabled under Market-based method to prevent double counting (use Carbon Neutral Energy % and RECs instead).</span>
                             </span>
                         </label>
                         <div class="flex">
@@ -742,7 +742,7 @@
                             Carbon Neutral Energy Purchase
                             <span class="info-icon" data-info="carbon-neutral">
                                 i
-                                <span class="tooltip-content">Percentage of your purchased electricity that is carbon-neutral (e.g., via renewable energy agreements or offsets). Enter 0–100.</span>
+                                <span class="tooltip-content">MARKET-BASED: Percentage of purchased electricity that is carbon-neutral (e.g., via renewable energy agreements). Used in Market-based Scope 2 calculations. Enter 0–100.</span>
                             </span>
                         </label>
                         <div class="flex">
@@ -1163,7 +1163,7 @@
             },
             'green-power': {
                 title: 'Green Power Purchase',
-                content: 'Percentage of grid electricity from accredited renewable sources. This can reduce your Scope 2 emissions reporting.'
+                content: '<strong>IMPORTANT:</strong> This field only applies when using Location-based Scope 2 calculations. <br><br>When Market-based is selected, this field is automatically disabled/ignored to prevent double counting. For Market-based calculations, use the Carbon Neutral Energy Purchase (%) field and RECs instead.<br><br>Under Location-based: Enter the percentage of your grid electricity from accredited renewable sources to reduce Scope 2 emissions.'
             },
             'recs': {
                 title: 'Renewable Energy Certificates',
