@@ -6,16 +6,31 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is a web-bas
 
 ## Current Project Status
 
-**Active Version**: v4.1 (`ala-ghg-calculator-v4.1.html`)
-**Project State**: Production-ready with recent critical fixes
+**Active Version**: v4.2 (`ala-ghg-calculator-v4.2.html`)
+**Project State**: Production-ready with emission factors reference display
 **Last Updated**: August 2025
+
+## IMPORTANT VERSIONING POLICY
+
+**For all large changes and new features, create a new version of the calculator:**
+- Copy the current version to a new file with incremented version number
+- Update all version references in the new file (title, header, footer)
+- Keep the previous version intact for rollback if needed
+- Update this documentation to reflect the new active version
+- Examples of changes requiring new versions:
+  - Adding new features or functionality
+  - Major UI/UX changes
+  - Significant calculation methodology updates
+  - Adding or removing emission sources
+  - Major refactoring or restructuring
 
 ## Key Project Files
 
 ### Main Calculator Files
-- `ala-ghg-calculator-v4.1.html` - Current production version with market-based Scope 2 fixes
-- `ala-ghg-calculator-v4.0.html` - Previous version with NGA 2024 emission factors
-- `Archive/` - Contains all previous versions (v1.0 through v4.2 drafts)
+- `ala-ghg-calculator-v4.2.html` - Current production version with emission factors reference display
+- `ala-ghg-calculator-v4.1.html` - Previous version with advanced UX features and market-based Scope 2 fixes
+- `ala-ghg-calculator-v4.0.html` - Version with NGA 2024 emission factors
+- `Archive/` - Contains all previous versions (v1.0 through v3.x)
 
 ### Documentation Files
 - `README.md` - Primary project documentation and usage instructions
@@ -61,15 +76,22 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is a web-bas
 - Chart.js for data visualization
 - Tailwind CSS for styling
 
-## Recent Major Updates (v4.1)
+## Recent Major Updates
 
-### Critical Fixes
+### Version 4.2 (August 2025)
+- Added comprehensive emission factors reference display feature
+- New "View Emission Factors" button in report section
+- Modal dialog showing all emission factors with source information
+- Includes NGA 2024 factors with table references and links
+- Print functionality for emission factors reference
+- Display of both location-based and market-based factors
+- Common refrigerant GWP values from IPCC AR5
+
+### Version 4.1 (August 2025)
 - Fixed market-based Scope 2 calculations using Australian residual mix factor (0.81 kg CO₂e/kWh)
 - Corrected RECs credit scaling by relevant grid factors
 - Prevented Green Power double-counting in market-based calculations
 - UI improvements with Green Power input disabled for market-based method
-
-### UX Enhancements  
 - Advanced sources toggle (hides uncommon sources by default)
 - Supplier-specific Steam/Heat emissions factor input
 - Enhanced Excel-style navigation (Enter key follows Tab order)
