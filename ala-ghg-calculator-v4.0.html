@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALA GHG Emissions Calculator - v3.3</title>
+    <title>ALA GHG Emissions Calculator - v4.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Removed html2pdf.js - using browser print functionality which works more reliably -->
@@ -249,8 +249,8 @@
                          onerror="this.style.display='none'; console.error('Failed to load ALA logo');">
                     <div>
                         <h1 class="text-3xl font-bold text-[#003366]">GHG Emissions Calculator</h1>
-                        <p class="text-gray-600">Track Scope 1 & 2 emissions using NGER methodology</p>
-                        <p class="text-sm text-gray-500">Version 3.3 - Enhanced Edition with Fixed PDF Export</p>
+                        <p class="text-gray-600">Track Scope 1 & 2 emissions using NGER methodology with NGA 2024 factors</p>
+                        <p class="text-sm text-gray-500">Version 4.0 - Updated with Official NGA 2024 Emission Factors</p>
                         <p class="text-xs text-gray-500 italic">Based on the ILMA GHG Calculator model, adapted with permission for Australian facilities.</p>
                     </div>
                 </div>
@@ -275,7 +275,8 @@
             <p class="text-sm text-gray-700">
                 This calculator operates entirely in your web browser. No data is transmitted to ALA
                 or any external servers. All calculations happen locally on your computer, and your
-                data remains completely private. When you close this page, no trace of your data remains.
+                data remains completely private. Data is saved in your browser's local storage for convenience
+                and can be cleared using the "Clear All Data" button.
             </p>
         </div>
 
@@ -944,7 +945,7 @@
             <!-- Placeholder for NGER factor publication date.  This will be populated
                  dynamically from the script below. -->
             <p id="ngerDate"></p>
-            <p>© 2025 Australian Lubricant Association | Version 3.1 | lubeassoc.com.au</p>
+            <p>© 2025 Australian Lubricant Association | Version 4.0 | lubeassoc.com.au</p>
         </div>
     </div>
 
@@ -1006,7 +1007,7 @@
          * reflect the new publication date.  This value will be injected
          * into the print footer at runtime.
          */
-        const NGER_FACTORS_DATE = '1 July 2023';
+        const NGER_FACTORS_DATE = '2024 Edition (August 2024)';
 
         // When the DOM is ready, insert the NGER factors date into the print footer.
         window.addEventListener('DOMContentLoaded', () => {
