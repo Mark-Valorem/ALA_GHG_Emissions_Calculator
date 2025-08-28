@@ -3,18 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ALA GHG Emissions Calculator - v4.2</title>
+    <title>ALA GHG Emissions Calculator - v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Removed html2pdf.js - using browser print functionality which works more reliably -->
+    <!-- PDF generation library: use the bundled version of html2pdf which includes html2canvas and jsPDF.
+         Removing the separate jsPDF and html2canvas scripts avoids duplicate definitions that caused
+         the original PDF export to fail. See https://github.com/eKoopmans/html2pdf for usage. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
     <style>
         @media print {
             .no-print { display: none !important; }
             body { margin: 0; }
             .print-only { display: block !important; }
             @page { 
-                size: A4 portrait; 
-                margin: 15mm;
+                size: A4 landscape; 
+                margin: 10mm;
             }
             
             /* Hide screen-only elements */
@@ -51,20 +54,6 @@
             /* Ensure sections don't break */
             .no-page-break-print {
                 page-break-inside: avoid;
-            }
-            
-            /* Ensure charts are properly rendered when printing */
-            canvas {
-                max-width: 100% !important;
-                height: auto !important;
-                page-break-inside: avoid;
-            }
-            
-            /* Keep chart containers visible and sized properly */
-            .chart-container {
-                page-break-inside: avoid;
-                min-height: 300px;
-                display: block !important;
             }
         }
         
@@ -227,11 +216,6 @@
         .close:focus {
             color: black;
         }
-        
-        /* Advanced Scope 1 sources: hidden by default */
-        .scope1-table .advanced-source { display: none; }
-        /* When toggle is on, reveal advanced columns */
-        .scope1-table.show-advanced .advanced-source { display: table-cell; }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -240,22 +224,11 @@
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <div class="flex items-center justify-between flex-wrap">
                 <div class="flex items-center space-x-4">
-                    <!--
-                        Include a local copy of the ALA logo and set a CORS
-                        attribute so html2canvas can draw it without tainting the
-                        canvas. Without specifying `crossorigin`, html2canvas will
-                        refuse remote images and the PDF generation silently
-                        fails. The onerror fallback still points to the hosted
-                        version in case the local file is missing.
-                    -->
-                    <img id="logoImage" src="https://www.valoremchemicals.com.au/wp-content/uploads/2025/07/ala_logo.png" alt="Australian Lubricant Association"
-                         class="h-16 w-auto"
-                         style="max-height: 64px;"
-                         onerror="this.style.display='none'; console.error('Failed to load ALA logo');">
+                    <img src="ala_logo.png" alt="Australian Lubricant Association" class="h-16 w-auto" onerror="this.onerror=null;this.src='http://www.valoremchemicals.com.au/wp-content/uploads/2025/07/ala_logo.png'">
                     <div>
                         <h1 class="text-3xl font-bold text-[#003366]">GHG Emissions Calculator</h1>
-                        <p class="text-gray-600">Track Scope 1 & 2 emissions using NGER methodology with NGA 2024 factors</p>
-                        <p class="text-sm text-gray-500">Version 4.2 - Enhanced with Emission Factors Reference Display</p>
+                        <p class="text-gray-600">Track Scope 1 & 2 emissions using NGER methodology</p>
+                        <p class="text-sm text-gray-500">Version 3.1 - Enhanced Edition</p>
                         <p class="text-xs text-gray-500 italic">Based on the ILMA GHG Calculator model, adapted with permission for Australian facilities.</p>
                     </div>
                 </div>
@@ -280,8 +253,7 @@
             <p class="text-sm text-gray-700">
                 This calculator operates entirely in your web browser. No data is transmitted to ALA
                 or any external servers. All calculations happen locally on your computer, and your
-                data remains completely private. Data is saved in your browser's local storage for convenience
-                and can be cleared using the "Clear All Data" button.
+                data remains completely private. When you close this page, no trace of your data remains.
             </p>
         </div>
 
@@ -452,27 +424,14 @@
                             <span class="tooltip-content">Direct emissions from fuel combustion and fugitive sources</span>
                         </span>
                     </h3>
-                    <div class="flex items-center justify-end gap-2 mb-2">
-                        <label class="text-sm">
-                            <input type="checkbox" id="showAdvancedSources">
-                            Show advanced sources
-                        </label>
-                        <span class="info-icon" aria-label="Advanced sources info">
-                            i
-                            <span class="tooltip-content">
-                                Refrigerant leaks, CO₂ fire discharges and welding gas are uncommon for most blenders.
-                                Leave these at zero unless you have measured data.
-                            </span>
-                        </span>
-                    </div>
                     <div class="table-container">
-                        <table id="scope1Table" class="w-full border-collapse scope1-table">
+                        <table class="w-full border-collapse scope1-table">
                             <thead>
                                 <tr class="bg-gray-100">
                                     <th class="border px-2 py-1 text-left">Month</th>
                                     <th class="border px-2 py-1 text-center" colspan="3">Stationary Combustion</th>
                                     <th class="border px-2 py-1 text-center" colspan="3">Mobile Combustion</th>
-                                    <th class="border px-2 py-1 text-center advanced-source" colspan="3">Other Direct</th>
+                                    <th class="border px-2 py-1 text-center" colspan="3">Other Direct</th>
                                     <th class="border px-2 py-1 text-right">Scope 1 Total</th>
                                 </tr>
                                 <tr class="bg-gray-50 text-sm">
@@ -483,31 +442,9 @@
                                     <th class="border px-2 py-1">Diesel Veh<br>(L)</th>
                                     <th class="border px-2 py-1">Petrol<br>(L)</th>
                                     <th class="border px-2 py-1">LPG<br>(L)</th>
-                                    <th class="border border-gray-300 px-2 py-2 text-right whitespace-nowrap advanced-source">
-                                        Refrigerant (kg)
-                                        <span class="info-icon">i
-                                            <span class="tooltip-content">
-                                                Enter only if you have measured refrigerant losses (e.g. HVAC or process chillers).
-                                                Most blenders will leave this as zero.
-                                            </span>
-                                        </span>
-                                    </th>
-                                    <th class="border border-gray-300 px-2 py-2 text-right whitespace-nowrap advanced-source">
-                                        CO₂ Fire (kg)
-                                        <span class="info-icon">i
-                                            <span class="tooltip-content">
-                                                Quantity of CO₂ discharged from fire suppression. Usually zero except in a genuine discharge event.
-                                            </span>
-                                        </span>
-                                    </th>
-                                    <th class="border border-gray-300 px-2 py-2 text-right whitespace-nowrap advanced-source">
-                                        Welding CO₂ (kg)
-                                        <span class="info-icon">i
-                                            <span class="tooltip-content">
-                                                CO₂ used for welding and shielding. Typically immaterial for blenders; leave at zero unless tracked.
-                                            </span>
-                                        </span>
-                                    </th>
+                                    <th class="border px-2 py-1">Refrigerant<br>(kg)</th>
+                                    <th class="border px-2 py-1">CO₂ Fire<br>(kg)</th>
+                                    <th class="border px-2 py-1">Welding<br>(kg CO₂)</th>
                                     <th class="border px-2 py-1">t CO₂e</th>
                                 </tr>
                             </thead>
@@ -523,9 +460,9 @@
                                     <td class="border px-2 py-1 text-right" id="total-dieselVehicles">0</td>
                                     <td class="border px-2 py-1 text-right" id="total-petrol">0</td>
                                     <td class="border px-2 py-1 text-right" id="total-lpg">0</td>
-                                    <td class="border px-2 py-1 text-right advanced-source" id="total-refrigerant">0</td>
-                                    <td class="border px-2 py-1 text-right advanced-source" id="total-co2Fire">0</td>
-                                    <td class="border px-2 py-1 text-right advanced-source" id="total-weldingGas">0</td>
+                                    <td class="border px-2 py-1 text-right" id="total-refrigerant">0</td>
+                                    <td class="border px-2 py-1 text-right" id="total-co2Fire">0</td>
+                                    <td class="border px-2 py-1 text-right" id="total-weldingGas">0</td>
                                     <td class="border px-2 py-1 text-right" id="total-scope1">0</td>
                                 </tr>
                             </tfoot>
@@ -542,17 +479,6 @@
                             <span class="tooltip-content">Indirect emissions from purchased electricity and steam</span>
                         </span>
                     </h3>
-                    <div class="text-sm text-gray-600 flex items-center justify-end mb-2">
-                        <label for="steamEF" class="mr-2">Steam/Heat EF (t CO₂e/GJ)</label>
-                        <input id="steamEF" type="number" min="0" step="0.001"
-                               class="w-24 border border-gray-300 rounded px-2 py-1 text-right" value="0.060">
-                        <span class="info-icon">i
-                            <span class="tooltip-content">
-                                Steam/heat emissions use a default 0.060 t CO₂e/GJ. If your supplier provides an emissions factor,
-                                enter it here for higher accuracy.
-                            </span>
-                        </span>
-                    </div>
                     <div class="table-container">
                         <table class="w-full border-collapse scope2-table">
                             <thead>
@@ -702,7 +628,7 @@
                             Green Power Purchase
                             <span class="info-icon" data-info="green-power">
                                 i
-                                <span class="tooltip-content">LOCATION-BASED ONLY: Percentage of grid electricity from renewable sources. Automatically disabled under Market-based method to prevent double counting (use Carbon Neutral Energy % and RECs instead).</span>
+                                <span class="tooltip-content">Percentage of grid electricity from renewable sources</span>
                             </span>
                         </label>
                         <div class="flex">
@@ -742,7 +668,7 @@
                             Carbon Neutral Energy Purchase
                             <span class="info-icon" data-info="carbon-neutral">
                                 i
-                                <span class="tooltip-content">MARKET-BASED: Percentage of purchased electricity that is carbon-neutral (e.g., via renewable energy agreements). Used in Market-based Scope 2 calculations. Enter 0–100.</span>
+                                <span class="tooltip-content">Percentage of your purchased electricity that is carbon-neutral (e.g., via renewable energy agreements or offsets). Enter 0–100.</span>
                             </span>
                         </label>
                         <div class="flex">
@@ -832,14 +758,12 @@
                 <button id="generateReport" class="px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-semibold" disabled>
                     Generate Executive Summary
                 </button>
-                <button id="viewFactors" class="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors font-semibold" title="View all emission factors used in calculations">
-                    View Emission Factors
-                </button>
                 <button id="exportData" class="px-6 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold">
                     Export to CSV
                 </button>
-                <button id="printReport" class="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-semibold" title="Generate PDF report using browser print" aria-label="Print/PDF Report">
-                    Generate PDF Report
+                <!-- Download PDF button -->
+                <button id="downloadPDF" class="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors font-semibold" title="Download professionally formatted PDF report" aria-label="Print PDF">
+                    Download PDF
                 </button>
                 <button id="clearData" class="px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-semibold">
                     Clear All Data
@@ -976,33 +900,6 @@
         <section id="executiveSummary" style="display: none;">
             <!-- Executive summary content will be generated here -->
         </section>
-
-        <!-- Emission Factors Modal (Hidden until triggered) -->
-        <section id="emissionFactorsModal" style="display: none;" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
-                <div class="mt-3">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-bold text-[#003366]">Emission Factors Reference</h2>
-                        <button id="closeFactorsModal" class="text-gray-500 hover:text-gray-700">
-                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="emissionFactorsContent" class="overflow-y-auto max-h-[70vh]">
-                        <!-- Emission factors content will be generated here -->
-                    </div>
-                    <div class="mt-4 flex justify-end">
-                        <button id="printFactors" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 mr-2">
-                            Print Factors
-                        </button>
-                        <button id="closeFactorsModalBottom" class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
 
     <!-- Modal for Information -->
@@ -1023,10 +920,7 @@
             </div>
             <p>This calculator applies Australian NGER methodologies and emission factors.</p>
             <p>Based on the ILMA GHG Calculator model, adapted with permission for Australian facilities.</p>
-            <!-- Placeholder for NGER factor publication date.  This will be populated
-                 dynamically from the script below. -->
-            <p id="ngerDate"></p>
-            <p>© 2025 Australian Lubricant Association | Version 4.2 | lubeassoc.com.au</p>
+            <p>© 2025 Australian Lubricant Association | Version 3.1 | lubeassoc.com.au</p>
         </div>
     </div>
 
@@ -1035,68 +929,47 @@
         const EMISSION_FACTORS = {
             // Energy content factors (GJ per unit)
             energyContent: {
-                naturalGas: 0.0393,      // GJ/m³ (NGA 2024 Table 5)
-                dieselGenerators: 0.0386, // GJ/L (diesel 38.6 GJ/kL)
-                // Map wasteOil to Fuel oil category for stationary combustion
-                wasteOil: 0.0397,        // GJ/L (Fuel oil 39.7 GJ/kL, NGA 2024 Table 8)
+                naturalGas: 0.0386,      // GJ/m³
+                dieselGenerators: 0.0386, // GJ/L
+                wasteOil: 0.0411,        // GJ/L
                 dieselVehicles: 0.0386,  // GJ/L
                 petrol: 0.0342,          // GJ/L
-                lpg: 0.0262,             // GJ/L (LPG 26.2 GJ/kL for vehicles, NGA 2024 Table 9)
+                lpg: 0.0254,             // GJ/L
                 steamHeat: 1             // Already in GJ
             },
             
             // Fuel combustion emissions (t CO₂e/GJ)
             fuelEmissions: {
-                // Combined scope 1 gases, t CO2e/GJ (NGA 2024)
-                naturalGas: 0.05153,         // Table 5 combined
-                dieselGenerators: 0.07020,    // Stationary "diesel oil", Table 8 combined
-                wasteOil: 0.07384,            // Map to Fuel oil, Table 8 combined
-                dieselVehicles: 0.07041,      // Transport diesel, Table 9 combined
-                petrol: 0.06762,              // Transport gasoline, Table 9 combined
-                lpg: 0.06100,                 // Transport LPG, Table 9 combined
-                steamHeat: 0.060              // Retain assumption
+                naturalGas: 0.0517,
+                dieselGenerators: 0.0702,
+                wasteOil: 0.0749,
+                dieselVehicles: 0.0702,
+                petrol: 0.0688,
+                lpg: 0.0635,
+                steamHeat: 0.060
             },
             
             // Direct emissions (kg CO₂e/unit)
             directEmissions: {
-                refrigerant: 1924,    // kg CO₂e/kg (R410A AR5, NGA 2024 Table 11)
+                refrigerant: 1810,    // kg CO₂e/kg (R410A)
                 co2Fire: 1,          // kg CO₂e/kg (CO₂ = 1)
                 weldingGas: 1        // kg CO₂e/kg (CO₂)
             },
             
             // State electricity factors (kg CO₂e/kWh)
-            // NGA 2024 location-based state factors (kg CO2e/kWh)
+            // Updated to the 2023–24 NGER location-based emission factors
             electricityByState: {
-                'NSW': 0.66,
-                'ACT': 0.66,
-                'VIC': 0.77,
-                'QLD': 0.71,
-                'SA': 0.23,
-                'WA-SWIS': 0.51,
-                'WA-NWIS': 0.61,
-                'TAS': 0.15,
-                'NT': 0.56
-            },
-            
-            // Add residual mix factor for market-based method (kg CO2e/kWh)
-            electricityResidualMix: 0.81   // NGA 2024 Table 2
-        };
-
-        /*
-         * Define the publication date for the NGER emission factors.  If the
-         * emission factors are updated in the future, update this string to
-         * reflect the new publication date.  This value will be injected
-         * into the print footer at runtime.
-         */
-        const NGER_FACTORS_DATE = '2024 Edition (August 2024)';
-
-        // When the DOM is ready, insert the NGER factors date into the print footer.
-        window.addEventListener('DOMContentLoaded', () => {
-            const dateEl = document.getElementById('ngerDate');
-            if (dateEl) {
-                dateEl.textContent = `NGER factors published ${NGER_FACTORS_DATE}`;
+                'NSW': 0.68,
+                'VIC': 0.79,
+                'QLD': 0.73,
+                'WA-SWIS': 0.53,
+                'WA-NWIS': 0.58,
+                'SA': 0.25,
+                'TAS': 0.12,
+                'NT': 0.54,
+                'ACT': 0.68
             }
-        });
+        };
 
         // Fuel type definitions with new structure
         const FUEL_CATEGORIES = {
@@ -1163,7 +1036,7 @@
             },
             'green-power': {
                 title: 'Green Power Purchase',
-                content: '<strong>IMPORTANT:</strong> This field only applies when using Location-based Scope 2 calculations. <br><br>When Market-based is selected, this field is automatically disabled/ignored to prevent double counting. For Market-based calculations, use the Carbon Neutral Energy Purchase (%) field and RECs instead.<br><br>Under Location-based: Enter the percentage of your grid electricity from accredited renewable sources to reduce Scope 2 emissions.'
+                content: 'Percentage of grid electricity from accredited renewable sources. This can reduce your Scope 2 emissions reporting.'
             },
             'recs': {
                 title: 'Renewable Energy Certificates',
@@ -1222,30 +1095,6 @@
             checkForExistingData();
             setupInfoIcons();
             setupEnterNavigation();
-            
-            // Initialize Steam/Heat EF input
-            const steamEFEl = document.getElementById('steamEF');
-            if (steamEFEl) {
-                // Seed from constant
-                if (typeof EMISSION_FACTORS?.fuelEmissions?.steamHeat === 'number') {
-                    steamEFEl.value = EMISSION_FACTORS.fuelEmissions.steamHeat.toFixed(3);
-                }
-
-                // Update constant and recalc when user changes it
-                steamEFEl.addEventListener('input', () => {
-                    const v = parseFloat(steamEFEl.value);
-                    if (!isNaN(v) && v >= 0) {
-                        EMISSION_FACTORS.fuelEmissions.steamHeat = v;
-
-                        // Recalculate monthly and annual totals
-                        currentMonths.forEach((_, idx) => updateMonthlyTotals(idx));
-                        updateAnnualTotals();
-
-                        // Persist
-                        saveData();
-                    }
-                });
-            }
         });
 
         // Setup info icons
@@ -1261,19 +1110,21 @@
             });
         }
 
-        // Excel-like Enter key navigation following column-wise tab order
+        // Excel-like Enter key navigation
         function setupEnterNavigation() {
-            document.addEventListener('keydown', function(e) {
-                if (e.key !== 'Enter') return;
-                const from = e.target;
-                if (!(from instanceof HTMLInputElement)) return;
-                const nextTab = (from.tabIndex || 0) + 1;
-                const next = document.querySelector(`[tabindex="${nextTab}"]`);
-                if (next) {
-                    e.preventDefault();
-                    next.focus();
-                    if (typeof next.select === 'function') next.select();
-                }
+            // Get all input fields in the monthly data tables
+            const inputs = document.querySelectorAll('#monthlyData input[type="number"]');
+            inputs.forEach((input, index) => {
+                input.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        // Move to next input
+                        if (index + 1 < inputs.length) {
+                            inputs[index + 1].focus();
+                            inputs[index + 1].select();
+                        }
+                    }
+                });
             });
         }
 
@@ -1339,10 +1190,6 @@
                                 document.getElementById('method-location').checked = true;
                                 document.getElementById('method-market').checked = false;
                             }
-                        }
-                        if (sus.steamEF && document.getElementById('steamEF')) {
-                            document.getElementById('steamEF').value = sus.steamEF;
-                            EMISSION_FACTORS.fuelEmissions.steamHeat = parseFloat(sus.steamEF);
                         }
                     }
                     
@@ -1418,18 +1265,12 @@
             document.getElementById('reportingYear').addEventListener('change', updateMonthDisplay);
             document.getElementById('calculateEmissions').addEventListener('click', calculateEmissions);
             document.getElementById('generateReport').addEventListener('click', generateExecutiveSummary);
-            document.getElementById('viewFactors').addEventListener('click', displayEmissionFactors);
             document.getElementById('exportData').addEventListener('click', exportToCSV);
-            // Print/PDF export button
-            document.getElementById('printReport').addEventListener('click', printReport);
+            // PDF export button
+            document.getElementById('downloadPDF').addEventListener('click', downloadPDF);
             document.getElementById('clearData').addEventListener('click', clearAllData);
             document.getElementById('clearMonthlyData').addEventListener('click', clearMonthlyData);
             document.getElementById('validateData').addEventListener('click', validateData);
-            
-            // Emission Factors Modal event listeners
-            document.getElementById('closeFactorsModal').addEventListener('click', closeEmissionFactorsModal);
-            document.getElementById('closeFactorsModalBottom').addEventListener('click', closeEmissionFactorsModal);
-            document.getElementById('printFactors').addEventListener('click', printEmissionFactors);
             
             // Production data
             document.getElementById('annualProduction').addEventListener('input', updateEmissionsIntensity);
@@ -1444,22 +1285,12 @@
             document.getElementById('method-location').addEventListener('change', function() {
                 if (this.checked) {
                     scope2Method = 'location';
-                    const gp = document.getElementById('greenPowerPercent');
-                    if (gp) {
-                        gp.disabled = false;
-                        gp.title = '';
-                    }
                     calculateEmissions();
                 }
             });
             document.getElementById('method-market').addEventListener('change', function() {
                 if (this.checked) {
                     scope2Method = 'market';
-                    const gp = document.getElementById('greenPowerPercent');
-                    if (gp) {
-                        gp.disabled = true;
-                        gp.title = 'Ignored when Market-based is selected to avoid double counting';
-                    }
                     calculateEmissions();
                 }
             });
@@ -1476,24 +1307,6 @@
                         this.value = 100;
                     }
                     calculateEmissions();
-                });
-            }
-            
-            // Set initial Green Power field state based on selected method
-            const gpInit = document.getElementById('greenPowerPercent');
-            if (gpInit) {
-                gpInit.disabled = (scope2Method === 'market');
-                gpInit.title = gpInit.disabled ? 'Ignored when Market-based is selected to avoid double counting' : '';
-            }
-            
-            // Advanced sources toggle behavior
-            const advToggle = document.getElementById('showAdvancedSources');
-            if (advToggle) {
-                advToggle.addEventListener('change', function() {
-                    const tbl = document.getElementById('scope1Table');
-                    if (!tbl) return;
-                    if (this.checked) tbl.classList.add('show-advanced');
-                    else tbl.classList.remove('show-advanced');
                 });
             }
         }
@@ -1551,9 +1364,6 @@
             const tbody = document.getElementById('scope1TableBody');
             tbody.innerHTML = '';
             
-            // Helper function to identify advanced fuel sources
-            const isAdvancedFuel = (fuelId) => ['refrigerant','co2Fire','weldingGas'].includes(fuelId);
-            
             // Define fuel order for consistent tabindex
             const fuelOrder = [
                 'naturalGas', 'dieselGenerators', 'wasteOil',
@@ -1577,9 +1387,8 @@
                 // Add input cells for each Scope 1 fuel type
                 ['stationary', 'mobile', 'other'].forEach(category => {
                     FUEL_CATEGORIES.scope1[category].forEach(fuel => {
-                        const advClass = isAdvancedFuel(fuel.id) ? 'advanced-source' : '';
                         html += `
-                            <td class="border px-1 py-1 ${advClass}">
+                            <td class="border px-1 py-1">
                                 <input type="number" 
                                     class="input-cell w-full" 
                                     id="${month}-${fuel.id}"
@@ -1960,12 +1769,12 @@
 
         // Calculate market-based Scope 2 emissions for a given month object
         // This function applies a zero emission factor to the percentage of electricity that is carbon neutral
-        // and uses the Australian residual mix emission factor for the remainder. Steam/heat emissions use the same factor as location-based.
+        // and uses the state grid emission factor for the remainder. Steam/heat emissions use the same factor as location-based.
         function calculateMarketScope2ForMonth(month) {
             let marketScope2 = 0;
             if (!month) return 0;
-            // Market-based must use the Australian residual mix (kg/kWh)
-            const factor = EMISSION_FACTORS.electricityResidualMix || 0.81;
+            const state = document.getElementById('state').value;
+            const factor = EMISSION_FACTORS.electricityByState[state] || 0.68;
             const cnPercent = parseFloat(document.getElementById('carbonNeutralPercent')?.value) || 0;
             const proportion = Math.max(0, Math.min(100, 100 - cnPercent)) / 100;
             // Electricity
@@ -2010,12 +1819,6 @@
             document.getElementById('printViewBtn').classList.add('active');
             
             updatePrintTable();
-            // Scroll to the consolidated monthly activity table so that
-            // print preview starts with the Monthly Activity Data section.
-            const printTableEl = document.getElementById('printConsolidatedTable');
-            if (printTableEl && typeof printTableEl.scrollIntoView === 'function') {
-                printTableEl.scrollIntoView({ behavior: 'instant' });
-            }
         }
 
         // Validate data
@@ -2216,29 +2019,16 @@
                 renewableReduction += (solarGeneration * factor) / 1000;
             }
 
-            // Green Power reduction applies to location-based only.
-            // Under market-based it is ignored to avoid double counting with the market adjustment.
-            if (greenPowerPercent > 0 && scope2Method === 'location') {
+            // Green power reduction
+            if (greenPowerPercent > 0) {
                 const totalElectricity = monthlyData.reduce((sum, month) => sum + month.scope2.electricity, 0);
                 const state = document.getElementById('state').value;
                 const factor = EMISSION_FACTORS.electricityByState[state] || 0.68;
                 renewableReduction += (totalElectricity * (greenPowerPercent / 100) * factor) / 1000;
-            } else if (greenPowerPercent > 0 && scope2Method === 'market') {
-                // Intentionally ignored when market-based
-                console.warn('Green Power % ignored under market-based Scope 2 to prevent double counting.');
             }
             
-            // RECs: 1 MWh displaces grid emissions. Credit depends on method:
-            // - location-based: state grid factor (kg/kWh)
-            // - market-based: residual mix (kg/kWh)
-            if (recsQuantity > 0) {
-                const state = document.getElementById('state').value;
-                const locationFactor = EMISSION_FACTORS.electricityByState[state] || 0.68;   // kg/kWh
-                const residualFactor = EMISSION_FACTORS.electricityResidualMix || 0.81;      // kg/kWh
-                const recsFactor = scope2Method === 'market' ? residualFactor : locationFactor;
-                // Explicit unit conversion: MWh → kWh → kg → t
-                renewableReduction += (recsQuantity * 1000 * recsFactor) / 1000;
-            }
+            // RECs (1 REC = 1 MWh = 1 t CO₂e reduction)
+            renewableReduction += recsQuantity;
             
             // Carbon offsets
             renewableReduction += carbonOffsets;
@@ -2586,8 +2376,7 @@
                     <div class="mt-8 pt-6 border-t border-gray-300">
                         <p class="text-sm text-gray-600 text-center">
                             This report was generated using the Australian Lubricant Association GHG Emissions Calculator,
-                            aligned with NGER methodologies and emission factors.<br>
-                            Developed by Mark Anderson (Valorem Chemicals Pty Ltd) on behalf of the ALA.
+                            aligned with NGER methodologies and emission factors.
                         </p>
                     </div>
                 </div>
@@ -2600,308 +2389,9 @@
             document.getElementById('executiveSummary').scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Display Emission Factors Modal
-        function displayEmissionFactors() {
-            const modal = document.getElementById('emissionFactorsModal');
-            const content = document.getElementById('emissionFactorsContent');
-            
-            // Generate the emission factors content
-            content.innerHTML = `
-                <div class="space-y-6">
-                    <!-- Header Information -->
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <h3 class="font-semibold text-lg text-[#003366] mb-2">Emission Factors Source Information</h3>
-                        <p class="text-sm text-gray-700">
-                            <strong>Primary Source:</strong> National Greenhouse Accounts (NGA) Factors - 2024 Edition<br>
-                            <strong>Published:</strong> August 2024<br>
-                            <strong>Publisher:</strong> Australian Government Department of Climate Change, Energy, the Environment and Water (DCCEEW)<br>
-                            <strong>Source Link:</strong> <a href="https://www.dcceew.gov.au/climate-change/publications/national-greenhouse-accounts-factors" 
-                                target="_blank" class="text-blue-600 underline">NGA Factors 2024</a><br>
-                            <strong>Last Updated in Calculator:</strong> August 2025
-                        </p>
-                    </div>
-
-                    <!-- Fuel Combustion Factors -->
-                    <div>
-                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Fuel Combustion Emission Factors</h3>
-                        <table class="w-full border-collapse border border-gray-300">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Fuel Type</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Energy Content</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Emission Factor</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">NGA Reference</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Natural Gas</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.0393 GJ/m³</td>
-                                    <td class="border border-gray-300 px-4 py-2">51.53 kg CO₂e/GJ</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 5</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">Diesel (Generators)</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.0386 GJ/L</td>
-                                    <td class="border border-gray-300 px-4 py-2">70.20 kg CO₂e/GJ</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 8</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Diesel (Vehicles)</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.0386 GJ/L</td>
-                                    <td class="border border-gray-300 px-4 py-2">70.20 kg CO₂e/GJ</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 9</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">Petrol</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.0342 GJ/L</td>
-                                    <td class="border border-gray-300 px-4 py-2">67.40 kg CO₂e/GJ</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 9</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">LPG</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.0262 GJ/L</td>
-                                    <td class="border border-gray-300 px-4 py-2">60.20 kg CO₂e/GJ</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 9</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">Waste Oil</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.0397 GJ/L</td>
-                                    <td class="border border-gray-300 px-4 py-2">74.50 kg CO₂e/GJ</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 8</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Steam/Heat Purchase</td>
-                                    <td class="border border-gray-300 px-4 py-2">1.0 GJ/GJ</td>
-                                    <td class="border border-gray-300 px-4 py-2">${EMISSION_FACTORS.fuelEmissions.steamHeat.toFixed(2)} kg CO₂e/GJ *</td>
-                                    <td class="border border-gray-300 px-4 py-2">User-defined</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p class="text-xs text-gray-600 mt-1">* Steam/Heat emission factor can be customized based on supplier data</p>
-                    </div>
-
-                    <!-- Electricity Grid Factors -->
-                    <div>
-                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Electricity Grid Emission Factors (Location-based)</h3>
-                        <table class="w-full border-collapse border border-gray-300">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-2 text-left">State/Territory</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Emission Factor (kg CO₂e/kWh)</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">NGA Reference</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">NSW/ACT</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.66</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">Victoria</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.77</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Queensland</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.71</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">South Australia</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.23</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Western Australia (SWIS)</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.51</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">Western Australia (NWIS)</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.61</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Tasmania</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.15</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">Northern Territory</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.56</td>
-                                    <td class="border border-gray-300 px-4 py-2">Table 40</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Market-based Factor -->
-                    <div>
-                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Market-based Emission Factor</h3>
-                        <table class="w-full border-collapse border border-gray-300">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Factor Type</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Value</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Australian Residual Mix</td>
-                                    <td class="border border-gray-300 px-4 py-2">0.81 kg CO₂e/kWh</td>
-                                    <td class="border border-gray-300 px-4 py-2">Used for market-based Scope 2 calculations</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Other Direct Emissions -->
-                    <div>
-                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Other Direct Emission Factors</h3>
-                        <table class="w-full border-collapse border border-gray-300">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Source</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">GWP/Factor</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Unit</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Reference</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Refrigerant (R410A default)</td>
-                                    <td class="border border-gray-300 px-4 py-2">1,924</td>
-                                    <td class="border border-gray-300 px-4 py-2">kg CO₂e/kg</td>
-                                    <td class="border border-gray-300 px-4 py-2">NGA Table 11 (AR5)</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">CO₂ Fire Systems</td>
-                                    <td class="border border-gray-300 px-4 py-2">1</td>
-                                    <td class="border border-gray-300 px-4 py-2">kg CO₂e/kg</td>
-                                    <td class="border border-gray-300 px-4 py-2">Direct CO₂</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">Welding Gases (CO₂)</td>
-                                    <td class="border border-gray-300 px-4 py-2">1</td>
-                                    <td class="border border-gray-300 px-4 py-2">kg CO₂e/kg</td>
-                                    <td class="border border-gray-300 px-4 py-2">Direct CO₂</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Common Refrigerant GWP Values -->
-                    <div>
-                        <h3 class="font-semibold text-lg text-[#003366] mb-3">Common Refrigerant GWP Values (IPCC AR5)</h3>
-                        <table class="w-full border-collapse border border-gray-300">
-                            <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Refrigerant</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">GWP (100-year)</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left">Common Use</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">R134a</td>
-                                    <td class="border border-gray-300 px-4 py-2">1,300</td>
-                                    <td class="border border-gray-300 px-4 py-2">Automotive, chillers</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">R410A</td>
-                                    <td class="border border-gray-300 px-4 py-2">1,924</td>
-                                    <td class="border border-gray-300 px-4 py-2">Split systems (default)</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">R32</td>
-                                    <td class="border border-gray-300 px-4 py-2">677</td>
-                                    <td class="border border-gray-300 px-4 py-2">Modern split systems</td>
-                                </tr>
-                                <tr class="bg-gray-50">
-                                    <td class="border border-gray-300 px-4 py-2">R404A</td>
-                                    <td class="border border-gray-300 px-4 py-2">3,943</td>
-                                    <td class="border border-gray-300 px-4 py-2">Commercial refrigeration</td>
-                                </tr>
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2">R507A</td>
-                                    <td class="border border-gray-300 px-4 py-2">3,985</td>
-                                    <td class="border border-gray-300 px-4 py-2">Low temperature refrigeration</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p class="text-xs text-gray-600 mt-1">Source: IPCC Fifth Assessment Report (AR5), referenced in NGA 2024 Table 11</p>
-                    </div>
-
-                    <!-- Additional Information -->
-                    <div class="bg-yellow-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-sm text-gray-700 mb-2">Important Notes:</h4>
-                        <ul class="text-sm text-gray-600 list-disc ml-5 space-y-1">
-                            <li>All emission factors are sourced from the National Greenhouse Accounts Factors 2024 Edition unless otherwise noted</li>
-                            <li>Factors are updated annually when new NGA editions are released</li>
-                            <li>The calculator uses Scope 1 and Scope 2 emission factors only</li>
-                            <li>For detailed methodology, refer to the full NGA Factors document at the DCCEEW website</li>
-                            <li>Steam/Heat emission factors should be obtained from your specific supplier where available</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-            
-            // Show the modal
-            modal.style.display = 'block';
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
-        }
-
-        // Close emission factors modal
-        function closeEmissionFactorsModal() {
-            const modal = document.getElementById('emissionFactorsModal');
-            modal.style.display = 'none';
-            document.body.style.overflow = 'auto'; // Re-enable scrolling
-        }
-
-        // Print emission factors
-        function printEmissionFactors() {
-            const content = document.getElementById('emissionFactorsContent').innerHTML;
-            const printWindow = window.open('', '', 'width=800,height=600');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Emission Factors Reference - ALA GHG Calculator</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
-                        th, td { border: 1px solid #333; padding: 8px; text-align: left; }
-                        th { background-color: #f0f0f0; }
-                        h3 { color: #003366; margin-top: 20px; }
-                        .bg-blue-50 { background-color: #e6f2ff; padding: 10px; margin: 10px 0; }
-                        .bg-yellow-50 { background-color: #fffce6; padding: 10px; margin: 10px 0; }
-                        @media print { 
-                            body { margin: 10px; }
-                            .no-print { display: none; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1 style="color: #003366;">ALA GHG Calculator - Emission Factors Reference</h1>
-                    ${content}
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.print();
-        }
-
         // Export to CSV
         function exportToCSV() {
-            // Include a comment referencing the ALA logo.  Many spreadsheet
-            // applications will ignore lines starting with a hash (#).  This
-            // provides branding context within the CSV without interfering with
-            // data parsing.
-            let csv = '# ALA Logo: https://www.valoremchemicals.com.au/wp-content/uploads/2025/07/ala_logo.png\n';
-            csv += 'Australian Lubricant Association GHG Emissions Calculator Export\n\n';
+            let csv = 'Australian Lubricant Association GHG Emissions Calculator Export\n\n';
             
             // Facility info
             csv += 'Facility Information\n';
@@ -2988,66 +2478,35 @@
             document.body.removeChild(link);
         }
 
-        // Removed downloadPDF function - using Print Report instead which works properly
-
-        // Print Report function using browser's print dialog
-        function printReport() {
-            // Ensure latest calculations
-            try {
-                calculateEmissions();
-                if (typeof updateComparisonTable === 'function') {
-                    updateComparisonTable();
-                }
-            } catch (calcErr) {
-                console.warn('Error updating data before printing:', calcErr);
-            }
-            
-            // Generate the executive summary
-            generateExecutiveSummary();
-            
-            // Wait longer for summary and charts to fully render
-            setTimeout(() => {
-                const summaryElement = document.getElementById('executiveSummary');
-                
-                if (!summaryElement || summaryElement.innerHTML.trim() === '') {
-                    alert('Please generate the executive summary first by clicking the "Generate Executive Summary" button.');
-                    return;
-                }
-                
-                // Show the summary
-                summaryElement.style.display = 'block';
-                summaryElement.scrollIntoView({ behavior: 'smooth' });
-                
-                // Ensure all charts are fully rendered by triggering a redraw
-                // Update each chart if it exists
-                ['emissionsBySourceChart', 'scopeBreakdownChart', 'monthlyTrendChart'].forEach(id => {
-                    const chartElement = document.getElementById(id);
-                    if (chartElement && chartElement.chart) {
-                        chartElement.chart.update();
-                        chartElement.chart.render();
-                    }
+        // Download PDF using html2pdf.js
+        function downloadPDF() {
+            // Ensure latest calculations and comparison table are reflected
+            calculateEmissions();
+            updateComparisonTable();
+            // Select entire body to capture all content
+            const element = document.body;
+            const options = {
+                margin: 10,
+                filename: 'ALA_GHG_Emissions_Report.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 1, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                pagebreak: { mode: ['avoid-all'] }
+            };
+            // Temporarily hide all form inputs and buttons for a clean export
+            const interactiveEls = Array.from(document.querySelectorAll('input, select, textarea, button'));
+            const originalDisplays = interactiveEls.map(el => el.style.display);
+            interactiveEls.forEach(el => { el.style.display = 'none'; });
+            // Use html2pdf in the recommended order: call from() before set().
+            // Passing our options after from() ensures html2pdf applies them correctly.
+            html2pdf()
+                .from(element)
+                .set(options)
+                .save()
+                .then(() => {
+                    // Restore original display after saving
+                    interactiveEls.forEach((el, idx) => { el.style.display = originalDisplays[idx]; });
                 });
-                
-                // Also regenerate charts to ensure they're fresh
-                if (calculationResults) {
-                    generateCharts(
-                        calculationResults.emissionsBySource, 
-                        calculationResults.scope1Total, 
-                        calculationResults.scope2Total
-                    );
-                }
-                
-                // Wait a bit more for chart rendering to complete
-                setTimeout(() => {
-                    // Use browser's print function
-                    window.print();
-                    
-                    // Show helpful message after print dialog closes
-                    setTimeout(() => {
-                        alert('To save as PDF: In the print dialog, select "Save as PDF" or "Microsoft Print to PDF" as your printer.');
-                    }, 100);
-                }, 1000); // Increased delay for chart rendering
-            }, 500); // Initial delay for summary rendering
         }
 
         // Clear monthly data only
@@ -3125,8 +2584,7 @@
                     wasteHeatRecovery: document.getElementById('wasteHeatRecovery').value,
                     sustainabilityNotes: document.getElementById('sustainabilityNotes').value,
                     carbonNeutralPercent: document.getElementById('carbonNeutralPercent').value,
-                    scope2Method: scope2Method,
-                    steamEF: document.getElementById('steamEF') ? document.getElementById('steamEF').value : EMISSION_FACTORS.fuelEmissions.steamHeat
+                    scope2Method: scope2Method
                 }
             };
             

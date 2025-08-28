@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ALA GHG Emissions Calculator – v3.1 (VERIFIED)</title>
+
+<!-- Tailwind (for general styling) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Chart.js (charts) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- html2pdf (bundle includes jsPDF + html2canvas) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"
+        integrity="sha512-YcsIP3J4qHWWz1wVwCW6O9tRZ2lMLbD3Qpf5l8y2vhe4eHLjGd3arLqv0cNn0ZqLQmGJGwKXy9l2ZqX7mTo3aA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<style>
+  /* Utility styles without @apply so this works as plain CSS */
+  .view-btn { padding: .5rem .75rem; border-radius: .375rem; background: #e2e8f0; color: #1e293b; margin-right: .5rem; }
+  .view-btn.active { background: #1e3a8a; color: #fff; }
+  .input-cell { width: 100%; background: #fffbe6; border: 1px solid #cbd5e1; font-size: 14px; padding: .25rem .5rem; }
+  .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* --- Print layout hardening --- */
+  @media print {
+    .no-print, .screen-only { display: none !important; }
+    @page { size: A4 landscape; margin: 10mm; }
+
+    /* Show consolidated table only for print */
+    #printConsolidatedTable { display: block !important; }
+
+    /* Hide the wide entry tables on print */
+    #detailedView, #summaryView { display: none !important; }
+
+    /* Fit consolidated table to page width (important) */
+    .print-consolidated-table table {
+      width: 100% !important;
+      table-layout: fixed !important;
+      border-collapse: collapse;
+      font-size: 8pt !important;
+    }
+    .print-consolidated-table th,
+    .print-consolidated-table td {
+      border: 1px solid #cbd5e1;
+      padding: 2px 3px !important;
+      word-break: break-word !important;
+      white-space: normal !important;
+    }
+
+    /* Keep key sections intact */
+    .no-page-break { page-break-inside: avoid; }
+
+    /* Show image snapshots of charts during print */
+    img.canvas-img { display: inline-block !important; }
+  }
+
+  /* During programmatic "printing" (Download PDF) we also add .printing */
+  body.printing .no-print, body.printing .screen-only { display: none !important; }
+  body.printing #printConsolidatedTable { display: block !important; }
+  body.printing #detailedView, body.printing #summaryView { display: none !important; }
+  body.printing .print-consolidated-table table {
+    width: 100% !important; table-layout: fixed !important; font-size: 8pt !important;
+  }
+  body.printing .print-consolidated-table th, body.printing .print-consolidated-table td {
+    padding: 2px 3px !important; white-space: normal !important; word-break: break-word !important;
+  }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<div class="max-w-[1200px] mx-auto p-6">
+  <!-- Header -->
+  <div class="bg-white shadow rounded p-5 mb-6">
+    <div class="flex items-center gap-4">
+      <img src="ala_logo.png" alt="Australian Lubricant Association" class="h-14 w-auto"
+           crossorigin="anonymous"
+           onerror="this.onerror=null;this.src='https://www.valoremchemicals.com.au/wp-content/uploads/2025/07/ala_logo.png'"/>
+      <div>
+        <h1 class="text-3xl font-bold text-blue-900">GHG Emissions Calculator</h1>
+        <p class="text-slate-600">Track Scope 1 &amp; 2 emissions using NGER methodology</p>
+        <p class="text-xs text-slate-500">Version 3.1 – Verified print/PDF build</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Facility -->
+  <section class="bg-white shadow rounded p-5 mb-6 no-page-break">
+    <h2 class="text-2xl font-semibold text-blue-900 mb-3">Facility Information</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label class="text-sm">Facility Name *</label>
+        <input id="facilityName" class="input-cell" placeholder="Enter facility name" />
+      </div>
+      <div>
+        <label class="text-sm">Location (State/Territory) *</label>
+        <select id="state" class="input-cell">
+          <option value="">Select state...</option>
+          <option value="NSW">New South Wales/ACT</option>
+          <option value="VIC">Victoria</option>
+          <option value="QLD">Queensland</option>
+          <option value="SA">South Australia</option>
+          <option value="WA-SWIS">Western Australia (SWIS)</option>
+          <option value="WA-NWIS">Western Australia (NWIS)</option>
+          <option value="TAS">Tasmania</option>
+          <option value="NT">Northern Territory</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm">Reporting Period *</label>
+        <select id="reportingPeriod" class="input-cell">
+          <option value="financial">Financial Year (Jul–Jun)</option>
+          <option value="calendar">Calendar Year (Jan–Dec)</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-sm">Reporting Year *</label>
+        <select id="reportingYear" class="input-cell">
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+          <option value="2026">2026</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact & simple initiatives (so values appear in PDFs) -->
+  <section class="bg-white shadow rounded p-5 mb-6 no-page-break">
+    <h2 class="text-2xl font-semibold text-blue-900 mb-3">Contact & Initiatives</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label class="text-sm">Contact Name</label>
+        <input id="contactName" class="input-cell" placeholder="Full name"/>
+      </div>
+      <div>
+        <label class="text-sm">Position</label>
+        <input id="contactPosition" class="input-cell" placeholder="Job title"/>
+      </div>
+      <div>
+        <label class="text-sm">Email</label>
+        <input id="contactEmail" type="email" class="input-cell" placeholder="email@example.com"/>
+      </div>
+      <div>
+        <label class="text-sm">Phone</label>
+        <input id="contactPhone" class="input-cell" placeholder="+61 X XXXX XXXX"/>
+      </div>
+      <div>
+        <label class="text-sm">Renewable electricity / RECs (MWh)</label>
+        <input id="recs" type="number" class="input-cell" min="0" step="0.1" placeholder="0"/>
+      </div>
+      <div>
+        <label class="text-sm">Carbon offsets (t CO₂e)</label>
+        <input id="offsets" type="number" class="input-cell" min="0" step="0.1" placeholder="0"/>
+      </div>
+    </div>
+  </section>
+
+  <!-- Monthly Activity Data -->
+  <section id="monthlyData" class="bg-white shadow rounded p-5 mb-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-2xl font-semibold text-blue-900">Monthly Activity Data</h2>
+      <div class="screen-only">
+        <button id="btnDetailed" class="view-btn active" onclick="showDetailed()">Detailed View</button>
+        <button id="btnSummary" class="view-btn" onclick="showSummary()">Summary View</button>
+        <button id="btnPrintView" class="view-btn" onclick="showPrintPreview()">Print Preview</button>
+      </div>
+    </div>
+
+    <!-- Detailed (inputs) -->
+    <div id="detailedView">
+      <h3 class="text-lg font-semibold text-white bg-blue-800 px-3 py-2 rounded-t">Scope 1 Emissions (Direct)</h3>
+      <div class="table-container">
+        <table class="w-full border-collapse">
+          <thead class="bg-slate-100 text-sm">
+            <tr>
+              <th class="border px-2 py-1 text-left">Month</th>
+              <th class="border px-2 py-1">Natural Gas<br/>(m³)</th>
+              <th class="border px-2 py-1">Diesel Gen<br/>(L)</th>
+              <th class="border px-2 py-1">Waste Oil<br/>(L)</th>
+              <th class="border px-2 py-1">Diesel Veh<br/>(L)</th>
+              <th class="border px-2 py-1">Petrol<br/>(L)</th>
+              <th class="border px-2 py-1">LPG<br/>(L)</th>
+              <th class="border px-2 py-1">Refrig<br/>(kg)</th>
+              <th class="border px-2 py-1">CO₂ Fire<br/>(kg)</th>
+              <th class="border px-2 py-1">Welding<br/>(kg CO₂)</th>
+              <th class="border px-2 py-1 text-right">Scope 1 Total</th>
+            </tr>
+          </thead>
+          <tbody id="scope1Body"></tbody>
+          <tfoot class="bg-slate-200 font-semibold">
+            <tr>
+              <td class="border px-2 py-1">Annual Total</td>
+              <td class="border px-2 py-1 text-right" id="t_natgas">0</td>
+              <td class="border px-2 py-1 text-right" id="t_dgen">0</td>
+              <td class="border px-2 py-1 text-right" id="t_waste">0</td>
+              <td class="border px-2 py-1 text-right" id="t_dveh">0</td>
+              <td class="border px-2 py-1 text-right" id="t_petrol">0</td>
+              <td class="border px-2 py-1 text-right" id="t_lpg">0</td>
+              <td class="border px-2 py-1 text-right" id="t_refrig">0</td>
+              <td class="border px-2 py-1 text-right" id="t_co2f">0</td>
+              <td class="border px-2 py-1 text-right" id="t_weld">0</td>
+              <td class="border px-2 py-1 text-right" id="t_scope1">0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <h3 class="text-lg font-semibold text-white mt-6 bg-green-700 px-3 py-2 rounded-t">Scope 2 Emissions (Indirect)</h3>
+      <div class="table-container">
+        <table class="w-full border-collapse">
+          <thead class="bg-slate-100 text-sm">
+            <tr>
+              <th class="border px-2 py-1 text-left">Month</th>
+              <th class="border px-2 py-1">Electricity<br/>(kWh)</th>
+              <th class="border px-2 py-1">Steam/Heat<br/>(GJ)</th>
+              <th class="border px-2 py-1 text-right">Scope 2 Total<br/>(t CO₂e)</th>
+            </tr>
+          </thead>
+          <tbody id="scope2Body"></tbody>
+          <tfoot class="bg-slate-200 font-semibold">
+            <tr>
+              <td class="border px-2 py-1">Annual Total</td>
+              <td class="border px-2 py-1 text-right" id="t_elec">0</td>
+              <td class="border px-2 py-1 text-right" id="t_steam">0</td>
+              <td class="border px-2 py-1 text-right" id="t_scope2">0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="flex gap-3 mt-4 no-print">
+        <button id="validateData" class="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600">Validate Data</button>
+        <button id="clearMonthlyData" class="px-4 py-2 bg-slate-600 text-white rounded hover:bg-slate-700">Clear Monthly Data</button>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div id="summaryView" style="display:none;">
+      <h3 class="text-lg font-semibold text-slate-900 mb-2">Monthly Emissions Summary</h3>
+      <div class="table-container">
+        <table class="w-full border-collapse">
+          <thead class="bg-slate-100 text-sm">
+            <tr>
+              <th class="border px-2 py-1 text-left">Month</th>
+              <th class="border px-2 py-1 text-right">Scope 1 (t CO₂e)</th>
+              <th class="border px-2 py-1 text-right">Scope 2 (t CO₂e)</th>
+              <th class="border px-2 py-1 text-right">Total (t CO₂e)</th>
+            </tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+          <tfoot class="bg-slate-200 font-semibold">
+            <tr>
+              <td class="border px-2 py-1">Annual Total</td>
+              <td class="border px-2 py-1 text-right" id="s_scope1">0</td>
+              <td class="border px-2 py-1 text-right" id="s_scope2">0</td>
+              <td class="border px-2 py-1 text-right" id="s_total">0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Consolidated print table -->
+    <div id="printConsolidatedTable" class="print-consolidated-table" style="display:none;">
+      <h3 class="text-lg font-semibold mb-1">Monthly Activity Data – All Sources</h3>
+      <table class="w-full">
+        <thead>
+          <tr class="bg-slate-100">
+            <th class="border px-1 py-1" rowspan="2">Month</th>
+            <th class="border px-1 py-1 text-center" colspan="9">Scope 1 – Direct Emissions</th>
+            <th class="border px-1 py-1 text-center" colspan="2">Scope 2</th>
+            <th class="border px-1 py-1" rowspan="2">Total<br/>(t&nbsp;CO₂e)</th>
+          </tr>
+          <tr class="bg-slate-50">
+            <th class="border px-1 py-1">Gas<br/>(m³)</th>
+            <th class="border px-1 py-1">D‑Gen<br/>(L)</th>
+            <th class="border px-1 py-1">W.Oil<br/>(L)</th>
+            <th class="border px-1 py-1">D‑Veh<br/>(L)</th>
+            <th class="border px-1 py-1">Petrol<br/>(L)</th>
+            <th class="border px-1 py-1">LPG<br/>(L)</th>
+            <th class="border px-1 py-1">Refrig<br/>(kg)</th>
+            <th class="border px-1 py-1">CO₂F<br/>(kg)</th>
+            <th class="border px-1 py-1">Weld<br/>(kg)</th>
+            <th class="border px-1 py-1">Elec<br/>(kWh)</th>
+            <th class="border px-1 py-1">Steam<br/>(GJ)</th>
+          </tr>
+        </thead>
+        <tbody id="printBody"></tbody>
+        <tfoot>
+          <tr class="bg-slate-200 font-semibold">
+            <td class="border px-1 py-1">Total</td>
+            <td class="border px-1 py-1 text-right" id="p_natgas">0</td>
+            <td class="border px-1 py-1 text-right" id="p_dgen">0</td>
+            <td class="border px-1 py-1 text-right" id="p_waste">0</td>
+            <td class="border px-1 py-1 text-right" id="p_dveh">0</td>
+            <td class="border px-1 py-1 text-right" id="p_petrol">0</td>
+            <td class="border px-1 py-1 text-right" id="p_lpg">0</td>
+            <td class="border px-1 py-1 text-right" id="p_refrig">0</td>
+            <td class="border px-1 py-1 text-right" id="p_co2f">0</td>
+            <td class="border px-1 py-1 text-right" id="p_weld">0</td>
+            <td class="border px-1 py-1 text-right" id="p_elec">0</td>
+            <td class="border px-1 py-1 text-right" id="p_steam">0</td>
+            <td class="border px-1 py-1 text-right" id="p_all">0</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+  <!-- Actions -->
+  <section class="bg-white shadow rounded p-5 mb-6 no-print">
+    <div class="flex flex-wrap gap-3 justify-center">
+      <button id="btnCalc" class="px-5 py-3 bg-blue-900 text-white rounded hover:bg-blue-950">Calculate Emissions</button>
+      <button id="btnPDF" class="px-5 py-3 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              title="Download professionally formatted PDF">Download PDF</button>
+      <button id="btnClearAll" class="px-5 py-3 bg-rose-600 text-white rounded hover:bg-rose-700">Clear All Data</button>
+    </div>
+  </section>
+
+  <!-- Results & Charts -->
+  <section id="results" class="bg-white shadow rounded p-5 mb-6" style="display:none;">
+    <h2 class="text-2xl font-semibold text-blue-900 mb-3">Annual Emissions Summary</h2>
+
+    <div class="grid md:grid-cols-3 gap-4">
+      <div class="rounded border-2 border-blue-700 bg-blue-50 p-4">
+        <h3 class="font-semibold text-blue-800">Scope 1 Emissions</h3>
+        <p class="text-3xl font-bold text-blue-900 mt-2"><span id="scope1Total">0</span> t CO₂e</p>
+      </div>
+      <div class="rounded border-2 border-green-700 bg-green-50 p-4">
+        <h3 class="font-semibold text-green-800">Scope 2 Emissions</h3>
+        <p class="text-xl font-bold text-green-900 mt-2">Location-based: <span id="scope2TotalLocation">0</span></p>
+        <p class="text-xl font-bold text-green-900">Market-based: <span id="scope2TotalMarket">0</span></p>
+      </div>
+      <div class="rounded border-2 border-purple-700 bg-purple-50 p-4">
+        <h3 class="font-semibold text-purple-800">Total Emissions</h3>
+        <p class="text-xl font-bold text-purple-900 mt-2">Location-based: <span id="totalEmissionsSumLocation">0</span></p>
+        <p class="text-xl font-bold text-purple-900">Market-based: <span id="totalEmissionsSumMarket">0</span></p>
+      </div>
+    </div>
+
+    <div id="charts" class="mt-6">
+      <h3 class="text-lg font-semibold text-blue-900 mb-2">Emissions by Source</h3>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="relative h-[340px]"><canvas id="emissionsBySourceChart"></canvas></div>
+        <div class="relative h-[340px]"><canvas id="scopeBreakdownChart"></canvas></div>
+      </div>
+      <h3 class="text-lg font-semibold text-blue-900 mt-6 mb-2">Monthly Emissions Trend</h3>
+      <div class="relative h-[300px]"><canvas id="monthlyTrendChart"></canvas></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* =============================
+   Data & Factors
+==============================*/
+const EMISSION_FACTORS = {
+  energyContent: {
+    naturalGas: 0.0386, dieselGen: 0.0386, wasteOil: 0.0411,
+    dieselVeh: 0.0386, petrol: 0.0342, lpg: 0.0254, steam: 1
+  },
+  fuelEmissions: {
+    naturalGas: 0.0517, dieselGen: 0.0702, wasteOil: 0.0749,
+    dieselVeh: 0.0702, petrol: 0.0688, lpg: 0.0635, steam: 0.060
+  },
+  direct: { refrigerant: 1810, co2f: 1, weld: 1 }, // kg CO2e per kg
+  electricityByState: {
+    'NSW': 0.68, 'VIC': 0.79, 'QLD': 0.73, 'WA-SWIS': 0.53, 'WA-NWIS': 0.58,
+    'SA': 0.25, 'TAS': 0.12, 'NT': 0.54, 'ACT': 0.68
+  }
+};
+
+const MONTHS_FINANCIAL = ['July','August','September','October','November','December','January','February','March','April','May','June'];
+const MONTHS_CALENDAR  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let currentMonths = [...MONTHS_FINANCIAL];
+let monthly = [];                // data model
+let results = null;              // calculation results
+
+/* =============================
+   UI & Table Generation
+==============================*/
+document.addEventListener('DOMContentLoaded', () => {
+  initializeMonths();
+  genTables();
+  attachHandlers();
+  loadFromStorage();
+});
+
+function initializeMonths(){
+  const period = document.getElementById('reportingPeriod').value;
+  currentMonths = period === 'calendar' ? [...MONTHS_CALENDAR] : [...MONTHS_FINANCIAL];
+  monthly = currentMonths.map(m => ({
+    month: m,
+    s1: { // scope 1 inputs
+      naturalGas: 0, dieselGen: 0, wasteOil: 0,
+      dieselVeh: 0, petrol: 0, lpg: 0,
+      refrigerant: 0, co2f: 0, weld: 0
+    },
+    s2: { electricity: 0, steam: 0 },
+    totals: { s1: 0, s2: 0, all: 0 }
+  }));
+}
+
+function genTables(){
+  // Scope 1 rows
+  const s1 = document.getElementById('scope1Body'); s1.innerHTML='';
+  currentMonths.forEach((m, mi)=>{
+    const row = document.createElement('tr');
+    row.className = mi % 2 ? 'bg-slate-50' : 'bg-white';
+
+    const mkInput=(id)=>`<input class="input-cell" type="number" min="0" step="0.001"
+                     data-month="${mi}" data-id="${id}" data-scope="s1"
+                     placeholder="0" onchange="onInputChange(this)">`;
+
+    row.innerHTML = `
+      <td class="border px-2 py-1">${m}</td>
+      <td class="border px-1 py-1">${mkInput('naturalGas')}</td>
+      <td class="border px-1 py-1">${mkInput('dieselGen')}</td>
+      <td class="border px-1 py-1">${mkInput('wasteOil')}</td>
+      <td class="border px-1 py-1">${mkInput('dieselVeh')}</td>
+      <td class="border px-1 py-1">${mkInput('petrol')}</td>
+      <td class="border px-1 py-1">${mkInput('lpg')}</td>
+      <td class="border px-1 py-1">${mkInput('refrigerant')}</td>
+      <td class="border px-1 py-1">${mkInput('co2f')}</td>
+      <td class="border px-1 py-1">${mkInput('weld')}</td>
+      <td class="border px-2 py-1 text-right font-medium" id="r_${mi}_s1">0</td>`;
+    s1.appendChild(row);
+  });
+
+  // Scope 2 rows
+  const s2 = document.getElementById('scope2Body'); s2.innerHTML='';
+  currentMonths.forEach((m, mi)=>{
+    const row = document.createElement('tr');
+    row.className = mi % 2 ? 'bg-slate-50' : 'bg-white';
+
+    const mkInput=(id)=>`<input class="input-cell" type="number" min="0" step="0.001"
+                     data-month="${mi}" data-id="${id}" data-scope="s2"
+                     placeholder="0" onchange="onInputChange(this)">`;
+
+    row.innerHTML = `
+      <td class="border px-2 py-1">${m}</td>
+      <td class="border px-1 py-1">${mkInput('electricity')}</td>
+      <td class="border px-1 py-1">${mkInput('steam')}</td>
+      <td class="border px-2 py-1 text-right font-medium" id="r_${mi}_s2">0</td>`;
+    s2.appendChild(row);
+  });
+
+  // Summary rows
+  const sum = document.getElementById('summaryBody'); sum.innerHTML='';
+  currentMonths.forEach((m, mi)=>{
+    const row = document.createElement('tr');
+    row.className = mi % 2 ? 'bg-slate-50' : 'bg-white';
+    row.innerHTML = `
+      <td class="border px-2 py-1">${m}</td>
+      <td class="border px-2 py-1 text-right" id="s_${mi}_s1">0</td>
+      <td class="border px-2 py-1 text-right" id="s_${mi}_s2">0</td>
+      <td class="border px-2 py-1 text-right font-semibold" id="s_${mi}_all">0</td>`;
+    sum.appendChild(row);
+  });
+
+  // Print table rows
+  const p = document.getElementById('printBody'); p.innerHTML='';
+  currentMonths.forEach((m, mi)=>{
+    const r = document.createElement('tr'); r.className = mi % 2 ? 'bg-slate-50' : 'bg-white';
+    r.innerHTML = `
+      <td class="border px-1 py-1">${m.substring(0,3)}</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_naturalGas">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_dieselGen">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_wasteOil">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_dieselVeh">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_petrol">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_lpg">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_refrigerant">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_co2f">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_weld">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_electricity">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_steam">0</td>
+      <td class="border px-1 py-1 text-right" id="p_${mi}_all">0</td>`;
+    p.appendChild(r);
+  });
+}
+
+function attachHandlers(){
+  document.getElementById('reportingPeriod').addEventListener('change', ()=>{
+    initializeMonths(); genTables(); saveToStorage();
+  });
+  document.getElementById('btnCalc').addEventListener('click', calcAll);
+  document.getElementById('btnPDF').addEventListener('click', downloadPDF);
+  document.getElementById('btnClearAll').addEventListener('click', clearAllData);
+  document.getElementById('validateData').addEventListener('click', validateData);
+  document.getElementById('clearMonthlyData').addEventListener('click', ()=>{ initializeMonths(); genTables(); saveToStorage(); });
+}
+
+/* =============================
+   Handlers
+==============================*/
+function onInputChange(el){
+  const mi = +el.dataset.month;
+  const scope = el.dataset.scope;
+  const id = el.dataset.id;
+  const v = parseFloat(el.value || '0') || 0;
+  if(scope==='s1'){ monthly[mi].s1[id] = v; } else { monthly[mi].s2[id] = v; }
+  updateMonth(mi);
+  updateTotals();
+  updatePrintRow(mi);
+  saveToStorage();
+}
+
+function updateMonth(mi){
+  // scope 1
+  const s1 = monthly[mi].s1;
+  let s1t = 0;
+  const s1fuels = ['naturalGas','dieselGen','wasteOil','dieselVeh','petrol','lpg'];
+  s1fuels.forEach(f=>{ s1t += s1[f]*EMISSION_FACTORS.energyContent[f]*EMISSION_FACTORS.fuelEmissions[f]; });
+  // other direct
+  s1t += (s1.refrigerant*EMISSION_FACTORS.direct.refrigerant)/1000;
+  s1t += (s1.co2f*EMISSION_FACTORS.direct.co2f)/1000;
+  s1t += (s1.weld*EMISSION_FACTORS.direct.weld)/1000;
+
+  // scope 2
+  const s2 = monthly[mi].s2;
+  let s2t = 0;
+  const state = document.getElementById('state').value || 'NSW';
+  s2t += (s2.electricity * (EMISSION_FACTORS.electricityByState[state]||0.68))/1000;
+  s2t += s2.steam * EMISSION_FACTORS.fuelEmissions.steam;
+
+  monthly[mi].totals = { s1: s1t, s2: s2t, all: s1t + s2t };
+
+  // update row cells
+  document.getElementById(`r_${mi}_s1`).textContent = fmt(s1t);
+  document.getElementById(`r_${mi}_s2`).textContent = fmt(s2t);
+  document.getElementById(`s_${mi}_s1`).textContent = fmt(s1t);
+  document.getElementById(`s_${mi}_s2`).textContent = fmt(s2t);
+  document.getElementById(`s_${mi}_all`).textContent = fmt(s1t + s2t);
+}
+
+function updateTotals(){
+  const totals = {
+    naturalGas:0,dieselGen:0,wasteOil:0,dieselVeh:0,petrol:0,lpg:0,refrigerant:0,co2f:0,weld:0,
+    electricity:0,steam:0, s1:0, s2:0
+  };
+  monthly.forEach(m=>{
+    Object.keys(m.s1).forEach(k=> totals[k]+= m.s1[k]);
+    totals.electricity += m.s2.electricity; totals.steam += m.s2.steam;
+    totals.s1 += m.totals.s1; totals.s2 += m.totals.s2;
+  });
+
+  // detailed footers
+  document.getElementById('t_natgas').textContent = fmt(totals.naturalGas);
+  document.getElementById('t_dgen').textContent   = fmt(totals.dieselGen);
+  document.getElementById('t_waste').textContent  = fmt(totals.wasteOil);
+  document.getElementById('t_dveh').textContent   = fmt(totals.dieselVeh);
+  document.getElementById('t_petrol').textContent = fmt(totals.petrol);
+  document.getElementById('t_lpg').textContent    = fmt(totals.lpg);
+  document.getElementById('t_refrig').textContent = fmt(totals.refrigerant);
+  document.getElementById('t_co2f').textContent   = fmt(totals.co2f);
+  document.getElementById('t_weld').textContent   = fmt(totals.weld);
+  document.getElementById('t_elec').textContent   = fmt(totals.electricity);
+  document.getElementById('t_steam').textContent  = fmt(totals.steam);
+  document.getElementById('t_scope1').textContent = fmt(totals.s1);
+  document.getElementById('t_scope2').textContent = fmt(totals.s2);
+
+  // summary footers
+  document.getElementById('s_scope1').textContent = fmt(totals.s1);
+  document.getElementById('s_scope2').textContent = fmt(totals.s2);
+  document.getElementById('s_total').textContent  = fmt(totals.s1 + totals.s2);
+}
+
+function updatePrintRow(mi){
+  const m = monthly[mi];
+  const keys = ['naturalGas','dieselGen','wasteOil','dieselVeh','petrol','lpg','refrigerant','co2f','weld'];
+  keys.forEach(k => {
+    const cell = document.getElementById(`p_${mi}_${k}`);
+    if(cell) cell.textContent = fmt(m.s1[k]);
+  });
+  document.getElementById(`p_${mi}_electricity`).textContent = fmt(m.s2.electricity);
+  document.getElementById(`p_${mi}_steam`).textContent       = fmt(m.s2.steam);
+  document.getElementById(`p_${mi}_all`).textContent         = fmt(m.totals.all);
+
+  // totals row for print
+  const agg = {naturalGas:0,dieselGen:0,wasteOil:0,dieselVeh:0,petrol:0,lpg:0,refrigerant:0,co2f:0,weld:0,electricity:0,steam:0,all:0};
+  monthly.forEach(mm=>{
+    Object.keys(mm.s1).forEach(k=>{ agg[k]+=mm.s1[k]; });
+    agg.electricity += mm.s2.electricity; agg.steam += mm.s2.steam; agg.all += mm.totals.all;
+  });
+  const map = {naturalGas:'p_natgas', dieselGen:'p_dgen', wasteOil:'p_waste', dieselVeh:'p_dveh', petrol:'p_petrol',
+               lpg:'p_lpg', refrigerant:'p_refrig', co2f:'p_co2f', weld:'p_weld', electricity:'p_elec', steam:'p_steam', all:'p_all'};
+  Object.keys(map).forEach(k=>{
+    const el = document.getElementById(map[k]);
+    if(el) el.textContent = fmt(agg[k]);
+  });
+}
+
+function calcAll(){
+  const state = document.getElementById('state').value;
+  if(!state){ alert('Please select a state/territory first'); return; }
+
+  // update every month (recompute)
+  monthly.forEach((_,i)=>{ updateMonth(i); updatePrintRow(i); });
+  updateTotals();
+
+  // build charts
+  buildCharts();
+
+  // show results
+  document.getElementById('results').style.display = 'block';
+
+  // store totals quickly
+  const totals = monthly.reduce((acc,m)=>{ acc.s1 += m.totals.s1; acc.s2 += m.totals.s2; acc.all += m.totals.all; return acc; },{s1:0,s2:0,all:0});
+  results = {
+    scope1: totals.s1, scope2Location: totals.s2, scope2Market: totals.s2,
+    totalLocation: totals.all, totalMarket: totals.all
+  };
+
+  // fill results cards
+  document.getElementById('scope1Total').textContent = fmt(results.scope1);
+  document.getElementById('scope2TotalLocation').textContent = fmt(results.scope2Location);
+  document.getElementById('scope2TotalMarket').textContent   = fmt(results.scope2Market);
+  document.getElementById('totalEmissionsSumLocation').textContent = fmt(results.totalLocation);
+  document.getElementById('totalEmissionsSumMarket').textContent   = fmt(results.totalMarket);
+
+  updateIntensity();
+  saveToStorage();
+}
+
+function buildCharts(){
+  // destroy existing if present
+  ['emissionsBySourceChart','scopeBreakdownChart','monthlyTrendChart'].forEach(id=>{
+    const c = document.getElementById(id);
+    if(c && c.chart){ c.chart.destroy(); c.chart = null; }
+  });
+
+  // Emissions by source (t CO2e)
+  const sums = {naturalGas:0,dieselGen:0,wasteOil:0,dieselVeh:0,petrol:0,lpg:0,electricity:0,steam:0};
+  const state = document.getElementById('state').value || 'NSW';
+  monthly.forEach(m=>{
+    const s1f = ['naturalGas','dieselGen','wasteOil','dieselVeh','petrol','lpg'];
+    s1f.forEach(f=> sums[f] += m.s1[f]*EMISSION_FACTORS.energyContent[f]*EMISSION_FACTORS.fuelEmissions[f]);
+    sums.electricity += (m.s2.electricity * (EMISSION_FACTORS.electricityByState[state]))/1000;
+    sums.steam += m.s2.steam * EMISSION_FACTORS.fuelEmissions.steam;
+  });
+  const labels1 = ['Natural Gas','Diesel Gen','Waste Oil','Diesel Veh','Petrol','LPG','Electricity','Steam'];
+  const data1   = [sums.naturalGas,sums.dieselGen,sums.wasteOil,sums.dieselVeh,sums.petrol,sums.lpg,sums.electricity,sums.steam];
+  const ctx1 = document.getElementById('emissionsBySourceChart').getContext('2d');
+  const c1 = new Chart(ctx1,{ type:'pie', data:{ labels:labels1, datasets:[{ data:data1 }] }, options:{ responsive:true, maintainAspectRatio:false }});
+  document.getElementById('emissionsBySourceChart').chart = c1;
+
+  // Scope breakdown
+  const totals = monthly.reduce((acc,m)=>{ acc.s1+=m.totals.s1; acc.s2+=m.totals.s2; return acc; },{s1:0,s2:0});
+  const ctx2 = document.getElementById('scopeBreakdownChart').getContext('2d');
+  const c2 = new Chart(ctx2,{ type:'doughnut', data:{ labels:['Scope 1','Scope 2'], datasets:[{ data:[totals.s1, totals.s2] }] }, options:{ responsive:true, maintainAspectRatio:false }});
+  document.getElementById('scopeBreakdownChart').chart = c2;
+
+  // Trend
+  const ctx3 = document.getElementById('monthlyTrendChart').getContext('2d');
+  const c3 = new Chart(ctx3,{
+    type:'line',
+    data:{
+      labels: currentMonths,
+      datasets:[
+        { label:'Scope 1', data: monthly.map(m=>m.totals.s1) },
+        { label:'Scope 2', data: monthly.map(m=>m.totals.s2) },
+        { label:'Total',  data: monthly.map(m=>m.totals.all) }
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false }
+  });
+  document.getElementById('monthlyTrendChart').chart = c3;
+}
+
+function updateIntensity(){
+  const prod = parseFloat(document.getElementById('annualProduction')?.value || '0') || 0;
+  const total = monthly.reduce((s,m)=>s+m.totals.all,0);
+  const intensity = prod>0 ? (total*1000)/prod : 0;
+  const el = document.getElementById('emissionsIntensity'); if (el) el.textContent = fmt(intensity);
+}
+
+function validateData(){
+  const warnings = [];
+  const state = document.getElementById('state').value;
+  if(!state) warnings.push('• State/Territory not selected');
+  const hasAny = monthly.some(m => Object.values(m.s1).some(v=>v>0) || m.s2.electricity>0 || m.s2.steam>0);
+  if(!hasAny) warnings.push('• No monthly data entered');
+  alert(warnings.length ? 'Validation warnings:\n\n'+warnings.join('\n') : 'Looks good.');
+}
+
+function clearAllData(){
+  if(!confirm('Clear all data?')) return;
+  ['facilityName','contactName','contactPosition','contactEmail','contactPhone','annualProduction','recs','offsets'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('state').value='';
+  document.getElementById('reportingPeriod').value='financial';
+  initializeMonths(); genTables(); results=null;
+  document.getElementById('results').style.display='none';
+  saveToStorage();
+}
+
+/* =============================
+   Print / PDF logic
+==============================*/
+function snapshotCharts() {
+  const ids = ['emissionsBySourceChart','scopeBreakdownChart','monthlyTrendChart'];
+  const pairs = [];
+  ids.forEach(id => {
+    const c = document.getElementById(id);
+    if (!c) return;
+    const chart = c.chart;                    // set in buildCharts()
+    if (!chart) return;
+    const img = document.createElement('img');
+    img.className = 'canvas-img';
+    img.alt = 'chart snapshot';
+    img.src = chart.toBase64Image();
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    c.style.display = 'none';
+    c.parentNode.insertBefore(img, c.nextSibling);
+    pairs.push({ canvas: c, img });
+  });
+  return pairs;
+}
+function restoreChartSnapshots(pairs) {
+  (pairs || []).forEach(({canvas,img}) => {
+    if (img && img.parentNode) img.parentNode.removeChild(img);
+    if (canvas) canvas.style.display = '';
+  });
+}
+
+// Mirror inputs so values always render in PDF
+function mirrorControls(apply, list){
+  if(!apply){
+    (list||[]).forEach(({el,span})=>{ if(span?.parentNode) span.parentNode.removeChild(span); if(el) el.style.display=''; });
+    return null;
+  }
+  const mirrors=[];
+  document.querySelectorAll('input,select,textarea').forEach(el=>{
+    if(getComputedStyle(el).display==='none') return;
+    const span=document.createElement('span');
+    span.style.display='inline-block';
+    span.style.minWidth = el.offsetWidth + 'px';
+    span.style.minHeight= el.offsetHeight + 'px';
+    span.style.padding  = getComputedStyle(el).padding;
+    span.style.border   = getComputedStyle(el).border;
+    span.style.background='#fff';
+    span.textContent = (el.tagName==='SELECT') ? (el.selectedOptions[0]?.text||'') :
+                       (el.type==='checkbox'||el.type==='radio') ? (el.checked?'Yes':'No') : (el.value||'');
+    el.style.display='none';
+    el.parentNode.insertBefore(span, el.nextSibling);
+    mirrors.push({el,span});
+  });
+  return mirrors;
+}
+
+function enterPrintMode() {
+  // Ensure data is fresh
+  calcAll();
+
+  const detailed     = document.getElementById('detailedView');
+  const summary      = document.getElementById('summaryView');
+  const consolidated = document.getElementById('printConsolidatedTable');
+
+  const prev = {
+    d: detailed ? detailed.style.display : '',
+    s: summary  ? summary.style.display  : '',
+    c: consolidated ? consolidated.style.display : ''
+  };
+
+  if (detailed)     detailed.style.display     = 'none';
+  if (summary)      summary.style.display      = 'none';
+  if (consolidated) consolidated.style.display = 'block';
+  document.body.classList.add('printing');
+
+  const mirrors = mirrorControls(true);
+  const chartPairs = snapshotCharts();
+
+  return function restore(){
+    restoreChartSnapshots(chartPairs);
+    mirrorControls(false, mirrors);
+    document.body.classList.remove('printing');
+    if (detailed)     detailed.style.display     = prev.d;
+    if (summary)      summary.style.display      = prev.s;
+    if (consolidated) consolidated.style.display = prev.c;
+  };
+}
+
+// Native print hooks
+let __restoreAfterPrint = null;
+window.addEventListener('beforeprint', () => { __restoreAfterPrint = enterPrintMode(); });
+window.addEventListener('afterprint',  () => { if (typeof __restoreAfterPrint === 'function') __restoreAfterPrint(); __restoreAfterPrint=null; });
+
+async function downloadPDF(){
+  const restore = enterPrintMode();
+  const element = document.body;
+  const options = {
+    margin: 10,
+    filename: 'ALA_GHG_Emissions_Report.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 1.6, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    pagebreak: { mode: ['avoid-all'] }
+  };
+  try{
+    await html2pdf().from(element).set(options).save();
+  }catch(e){
+    console.error('PDF generation failed', e);
+    alert('PDF generation failed. Please try again.');
+  }finally{
+    if(typeof restore==='function') restore();
+  }
+}
+
+/* =============================
+   Persistence
+==============================*/
+function saveToStorage(){
+  const data={
+    facilityName: val('facilityName'), state: val('state'),
+    reportingPeriod: val('reportingPeriod'), reportingYear: val('reportingYear'),
+    contactName: val('contactName'), contactPosition: val('contactPosition'),
+    contactEmail: val('contactEmail'), contactPhone: val('contactPhone'),
+    recs: val('recs'), offsets: val('offsets'),
+    monthly
+  };
+  try { localStorage.setItem('alaGHGData', JSON.stringify(data)); } catch(e) {}
+}
+function loadFromStorage(){
+  let raw=null; try{ raw=localStorage.getItem('alaGHGData'); }catch(e){}
+  if(!raw) return;
+  try{
+    const d=JSON.parse(raw);
+    ['facilityName','state','reportingPeriod','reportingYear','contactName','contactPosition','contactEmail','contactPhone','recs','offsets']
+      .forEach(id=>{ if(d[id]!==undefined){ const el=document.getElementById(id); if(el) el.value=d[id]; } });
+    if(Array.isArray(d.monthly) && d.monthly.length){ monthly = d.monthly; genTables();
+      monthly.forEach((m,i)=>{
+        const fill = (scope, key, val) => { const el = document.querySelector(`input[data-month="${i}"][data-scope="${scope}"][data-id="${key}"]`); if(el){ el.value=val; } };
+        Object.entries(m.s1).forEach(([k,v])=>fill('s1',k,v));
+        fill('s2','electricity', m.s2.electricity); fill('s2','steam', m.s2.steam);
+        updateMonth(i); updatePrintRow(i);
+      });
+      updateTotals();
+    }
+  }catch(e){ console.warn('Load error', e); }
+}
+function val(id){ const el=document.getElementById(id); return el ? el.value : ''; }
+
+/* =============================
+   Helpers & View toggles
+==============================*/
+function fmt(n){
+  if(typeof n!=='number') return '0';
+  if(n===0) return '0';
+  if(n<0.01) return n.toExponential(2);
+  if(n<1) return n.toFixed(3);
+  if(n<10) return n.toFixed(2);
+  if(n<100) return n.toFixed(1);
+  return Math.round(n).toLocaleString();
+}
+
+function showDetailed(){ document.getElementById('detailedView').style.display='block'; document.getElementById('summaryView').style.display='none'; document.getElementById('printConsolidatedTable').style.display='none'; document.getElementById('btnDetailed').classList.add('active'); document.getElementById('btnSummary').classList.remove('active'); document.getElementById('btnPrintView').classList.remove('active'); }
+function showSummary(){  document.getElementById('detailedView').style.display='none';  document.getElementById('summaryView').style.display='block'; document.getElementById('printConsolidatedTable').style.display='none'; document.getElementById('btnDetailed').classList.remove('active'); document.getElementById('btnSummary').classList.add('active'); document.getElementById('btnPrintView').classList.remove('active'); }
+function showPrintPreview(){ document.getElementById('detailedView').style.display='none'; document.getElementById('summaryView').style.display='none'; document.getElementById('printConsolidatedTable').style.display='block'; document.getElementById('btnDetailed').classList.remove('active'); document.getElementById('btnSummary').classList.remove('active'); document.getElementById('btnPrintView').classList.add('active'); window.scrollTo({top: document.getElementById('printConsolidatedTable').offsetTop, behavior:'instant'}); }
+</script>
+
+</body>
+</html>

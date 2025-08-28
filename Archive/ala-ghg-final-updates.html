@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALA GHG Emissions Calculator v3.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Critical style updates for v3.1 */
+        .input-cell { 
+            background-color: #fef3c7; 
+            border: 1px solid #e5e7eb;
+            padding: 4px;
+            font-size: 14px;
+        }
+        
+        /* Remove number input spinners */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        
+        @media print {
+            .screen-only { display: none !important; }
+            .print-only { display: block !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header with ALA Branding -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <!-- ALA Logo placeholder - Replace with actual logo -->
+                <div class="flex items-center">
+                    <div class="w-32 h-16 bg-gradient-to-r from-yellow-600 to-green-600 rounded flex items-center justify-center text-white font-bold">
+                        ALA
+                    </div>
+                    <div class="ml-4">
+                        <h1 class="text-3xl font-bold text-[#003366]">Australian Lubricant Association</h1>
+                        <p class="text-lg text-gray-600">GHG Emissions Calculator v3.1</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- CRITICAL: Disclaimer -->
+            <div class="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-6">
+                <h3 class="font-bold text-red-700 mb-2">⚠️ Important Disclaimer</h3>
+                <p class="text-sm text-gray-700">
+                    This calculator is provided by the Australian Lubricant Association (ALA) as a general guide only. 
+                    While ALA has endeavoured to ensure accuracy, it makes no warranties and accepts no liability 
+                    for the accuracy, completeness, or reliability of calculations. Users are responsible for 
+                    verifying all data and calculations for their specific circumstances. This tool should not 
+                    replace professional advice or official reporting requirements under NGER or other regulatory frameworks.
+                </p>
+            </div>
+            
+            <!-- Data Security Notice -->
+            <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+                <h3 class="font-bold text-green-700 mb-2">🔒 Your Data is Secure</h3>
+                <p class="text-sm text-gray-700">
+                    This calculator operates entirely in your web browser. No data is transmitted to ALA 
+                    or any external servers. All calculations happen locally on your computer, and your 
+                    data remains completely private. When you close this page, no trace of your data remains 
+                    unless you explicitly save it using the export function.
+                </p>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">How to Use This Calculator</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div class="bg-white p-4 rounded-lg">
+                    <div class="font-semibold text-blue-700 mb-2">Step 1: Setup</div>
+                    <p>Enter your facility details and select your state/territory for accurate electricity emission factors.</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg">
+                    <div class="font-semibold text-blue-700 mb-2">Step 2: Enter Data</div>
+                    <p>Input monthly consumption data from your utility bills and fuel records. Leave fields blank if not applicable.</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg">
+                    <div class="font-semibold text-blue-700 mb-2">Step 3: Review Results</div>
+                    <p>View your calculated emissions, broken down by scope and source, with visual charts and export options.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- UPDATED EMISSION FACTORS WITH OFFICIAL NGER VALUES -->
+        <script>
+        // CRITICAL UPDATE: Replace placeholder values with official NGER factors
+        // Source: National Greenhouse Accounts Factors 2024 & NGER Determination 2024-25
+        const EMISSION_FACTORS = {
+            // Energy content factors (GJ per unit)
+            energyContent: {
+                naturalGas: 0.0393,     // GJ per m³ (NGER 2024)
+                diesel: 0.0386,         // GJ per L (NGER 2024)
+                petrol: 0.0343,         // GJ per L (NGER 2024)
+                lpg: 0.0257,            // GJ per L (NGER 2024)
+                wasteOil: 0.0420,       // GJ per L (NGER 2024)
+                electricity: 0.0036     // GJ per kWh
+            },
+            
+            // Fuel emission factors (kg CO₂e per GJ)
+            fuelEmissions: {
+                naturalGas: 51.53,      // kg CO₂e per GJ (NGER 2024)
+                diesel: 70.20,          // kg CO₂e per GJ (transport diesel)
+                petrol: 67.40,          // kg CO₂e per GJ (NGER 2024)
+                lpg: 60.60,             // kg CO₂e per GJ (NGER 2024)
+                wasteOil: 74.00,        // kg CO₂e per GJ (NGER 2024)
+                steamHeat: 60.00        // kg CO₂e per GJ (average)
+            },
+            
+            // Direct emission factors for fugitive sources
+            directEmissions: {
+                refrigerantR134a: 1300, // kg CO₂e per kg (GWP for R134a)
+                co2Direct: 1,           // kg CO₂e per kg CO₂
+                weldingCO2: 1           // kg CO₂e per kg CO₂
+            },
+            
+            // State-specific electricity emission factors (kg CO₂e per kWh)
+            // Source: NGA Factors 2024, Table 5
+            electricityByState: {
+                'NSW': 0.68,            // New South Wales/ACT grid
+                'VIC': 0.77,            // Victoria grid
+                'QLD': 0.73,            // Queensland grid
+                'SA': 0.44,             // South Australia grid (high renewables)
+                'WA-SWIS': 0.51,        // WA South West Interconnected System
+                'WA-NWIS': 0.62,        // WA North West Interconnected System
+                'TAS': 0.15,            // Tasmania grid (mostly hydro)
+                'NT': 0.54              // Northern Territory grid
+            }
+        };
+
+        // Facility Information Section
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize monthly data structure
+            const monthlyData = [];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            // Create data structure for each month
+            months.forEach(month => {
+                monthlyData.push({
+                    month: month,
+                    scope1: {
+                        stationary: { naturalGas: 0, dieselGenerators: 0, wasteOil: 0 },
+                        mobile: { dieselVehicles: 0, petrol: 0, lpg: 0 },
+                        other: { refrigerant: 0, co2Fire: 0, weldingGas: 0 },
+                        total: 0
+                    },
+                    scope2: {
+                        electricity: 0,
+                        steamHeat: 0,
+                        total: 0
+                    },
+                    totalEmissions: 0
+                });
+            });
+            
+            // Auto-save functionality
+            function saveToLocalStorage() {
+                const data = {
+                    facilityName: document.getElementById('facilityName')?.value || '',
+                    state: document.getElementById('state')?.value || '',
+                    reportingPeriod: document.getElementById('reportingPeriod')?.value || '',
+                    monthlyData: monthlyData,
+                    lastSaved: new Date().toISOString()
+                };
+                localStorage.setItem('alaGHGCalculatorData', JSON.stringify(data));
+            }
+            
+            // Load saved data
+            function loadFromLocalStorage() {
+                const savedData = localStorage.getItem('alaGHGCalculatorData');
+                if (savedData) {
+                    try {
+                        const data = JSON.parse(savedData);
+                        if (document.getElementById('facilityName')) {
+                            document.getElementById('facilityName').value = data.facilityName || '';
+                        }
+                        if (document.getElementById('state')) {
+                            document.getElementById('state').value = data.state || '';
+                        }
+                        if (document.getElementById('reportingPeriod')) {
+                            document.getElementById('reportingPeriod').value = data.reportingPeriod || '';
+                        }
+                        // Restore monthly data if needed
+                        if (data.monthlyData) {
+                            Object.assign(monthlyData, data.monthlyData);
+                        }
+                    } catch (e) {
+                        console.error('Error loading saved data:', e);
+                    }
+                }
+            }
+            
+            // Initialize on page load
+            loadFromLocalStorage();
+            
+            // Auto-save every 30 seconds
+            setInterval(saveToLocalStorage, 30000);
+        });
+        </script>
+        
+        <!-- Facility Information -->
+        <section class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold text-[#003366] mb-4">Facility Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Facility Name *</label>
+                    <input type="text" id="facilityName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter facility name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">State/Territory *</label>
+                    <select id="state" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select state...</option>
+                        <option value="NSW">New South Wales/ACT</option>
+                        <option value="VIC">Victoria</option>
+                        <option value="QLD">Queensland</option>
+                        <option value="SA">South Australia</option>
+                        <option value="WA-SWIS">Western Australia (SWIS)</option>
+                        <option value="WA-NWIS">Western Australia (NWIS)</option>
+                        <option value="TAS">Tasmania</option>
+                        <option value="NT">Northern Territory</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Reporting Period *</label>
+                    <select id="reportingPeriod" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="calendar">Calendar Year (Jan-Dec)</option>
+                        <option value="financial">Financial Year (Jul-Jun)</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Monthly Data Entry (Simplified for demonstration) -->
+        <section class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold text-[#003366] mb-4">Monthly Activity Data</h2>
+            
+            <!-- View Controls -->
+            <div class="mb-4 flex gap-2">
+                <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Detailed View</button>
+                <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Summary View</button>
+                <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Print Preview</button>
+            </div>
+            
+            <!-- Scope 1 Table -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-white bg-green-600 px-4 py-2 rounded-t">
+                    Scope 1 Emissions (Direct)
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border px-2 py-1 text-left">Month</th>
+                                <th class="border px-2 py-1" colspan="3">Stationary Combustion</th>
+                                <th class="border px-2 py-1" colspan="3">Mobile Combustion</th>
+                                <th class="border px-2 py-1">Total</th>
+                            </tr>
+                            <tr class="bg-gray-50 text-sm">
+                                <th class="border px-2 py-1"></th>
+                                <th class="border px-2 py-1">Natural Gas<br>(m³)</th>
+                                <th class="border px-2 py-1">Diesel Gen<br>(L)</th>
+                                <th class="border px-2 py-1">Waste Oil<br>(L)</th>
+                                <th class="border px-2 py-1">Diesel Fleet<br>(L)</th>
+                                <th class="border px-2 py-1">Petrol<br>(L)</th>
+                                <th class="border px-2 py-1">LPG<br>(L)</th>
+                                <th class="border px-2 py-1">t CO₂e</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scope1TableBody">
+                            <!-- Monthly rows will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Scope 2 Table -->
+            <div class="mb-6">
+                <h3 class="text-lg font-semibold text-white bg-blue-600 px-4 py-2 rounded-t">
+                    Scope 2 Emissions (Indirect - Electricity)
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border px-2 py-1 text-left">Month</th>
+                                <th class="border px-2 py-1">Electricity<br>(kWh)</th>
+                                <th class="border px-2 py-1">Steam/Heat<br>(GJ)</th>
+                                <th class="border px-2 py-1">Total<br>(t CO₂e)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scope2TableBody">
+                            <!-- Monthly rows will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <p class="text-sm text-gray-600 mt-4">
+                * Leave fields blank if not applicable. Data is automatically saved to your browser.
+            </p>
+        </section>
+
+        <!-- Results Summary -->
+        <section class="bg-white shadow-md rounded-lg p-6 mb-6">
+            <h2 class="text-2xl font-semibold text-[#003366] mb-4">Annual Emissions Summary</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                    <div class="text-sm text-gray-600 mb-1">Scope 1 (Direct)</div>
+                    <div class="text-2xl font-bold text-green-700" id="scope1Total">0.00</div>
+                    <div class="text-sm text-gray-600">tonnes CO₂e</div>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <div class="text-sm text-gray-600 mb-1">Scope 2 (Electricity)</div>
+                    <div class="text-2xl font-bold text-blue-700" id="scope2Total">0.00</div>
+                    <div class="text-sm text-gray-600">tonnes CO₂e</div>
+                </div>
+                <div class="bg-gray-100 p-4 rounded-lg border-2 border-gray-300">
+                    <div class="text-sm text-gray-600 mb-1">Total Emissions</div>
+                    <div class="text-2xl font-bold text-gray-700" id="totalEmissions">0.00</div>
+                    <div class="text-sm text-gray-600">tonnes CO₂e</div>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <button onclick="calculateEmissions()" class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold">
+                    Calculate Emissions
+                </button>
+                <button onclick="exportToCSV()" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold">
+                    Export to CSV
+                </button>
+                <button onclick="window.print()" class="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 font-semibold">
+                    Print Report
+                </button>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-sm text-gray-600 mt-8">
+            <p>© 2025 Australian Lubricant Association. All emission factors sourced from NGER Determination 2024-25 and National Greenhouse Accounts Factors 2024.</p>
+            <p class="mt-2">For support, contact: <a href="mailto:support@ala.org.au" class="text-blue-600 hover:underline">support@ala.org.au</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Placeholder calculation function
+        function calculateEmissions() {
+            alert('Emissions calculation would be performed here using NGER methodology.');
+        }
+        
+        // Placeholder export function
+        function exportToCSV() {
+            alert('Data would be exported to CSV format here.');
+        }
+    </script>
+</body>
+</html>

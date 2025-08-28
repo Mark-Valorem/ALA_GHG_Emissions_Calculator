@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALA GHG Emissions Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-break { page-break-before: always; }
+            body { font-size: 12px; }
+        }
+        .input-cell {
+            background-color: #fef3c7;
+            border: 1px solid #fbbf24;
+        }
+        .calculated-cell {
+            background-color: #e0e7ff;
+            border: 1px solid #818cf8;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="bg-green-700 text-white p-6 rounded-lg shadow-lg mb-8">
+            <h1 class="text-3xl font-bold">Australian Lubricant Association</h1>
+            <h2 class="text-xl mt-2">GHG Emissions Calculator (NGER Aligned)</h2>
+            <p class="mt-2 text-green-100">Calculate your facility's Scope 1 and Scope 2 emissions using Australian methodology</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="mb-6 no-print">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button onclick="showTab('facility')" id="facility-tab" class="tab-button py-2 px-1 border-b-2 border-green-600 font-medium text-sm text-green-600">
+                        Facility Information
+                    </button>
+                    <button onclick="showTab('data')" id="data-tab" class="tab-button py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Monthly Data Entry
+                    </button>
+                    <button onclick="showTab('factors')" id="factors-tab" class="tab-button py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Emission Factors
+                    </button>
+                    <button onclick="showTab('results')" id="results-tab" class="tab-button py-2 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        Results Summary
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="content">
+            <!-- Facility Information Tab -->
+            <div id="facility-content" class="tab-content">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-green-700">Facility Information</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Facility Name</label>
+                            <input type="text" id="facilityName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">State/Territory</label>
+                            <select id="facilityState" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" onchange="updateElectricityFactor()">
+                                <option value="">Select State/Territory</option>
+                                <option value="NSW">New South Wales</option>
+                                <option value="VIC">Victoria</option>
+                                <option value="QLD">Queensland</option>
+                                <option value="SA">South Australia</option>
+                                <option value="WA">Western Australia</option>
+                                <option value="TAS">Tasmania</option>
+                                <option value="NT">Northern Territory</option>
+                                <option value="ACT">Australian Capital Territory</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Reporting Year</label>
+                            <input type="text" id="reportingYear" placeholder="e.g., 2025" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Reporting Period</label>
+                            <select id="reportingPeriod" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <option value="calendar">Calendar Year (Jan-Dec)</option>
+                                <option value="financial">Financial Year (Jul-Jun)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mt-6">
+                        <h4 class="text-lg font-semibold text-blue-800 mb-2">Instructions</h4>
+                        <ul class="list-disc list-inside text-sm text-blue-700 space-y-1">
+                            <li>This calculator estimates Scope 1 and Scope 2 greenhouse gas emissions only</li>
+                            <li>All calculations align with Australian National Greenhouse and Energy Reporting (NGER) methodology</li>
+                            <li>Enter monthly consumption data for accurate annual emissions tracking</li>
+                            <li>All units are metric as per Australian standards</li>
+                            <li>Emission factors are based on the latest NGER Determination and NGA Factors</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Data Entry Tab -->
+            <div id="data-content" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-green-700">Monthly Energy Consumption Data</h3>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Natural Gas<br/>(m³)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Electricity<br/>(kWh)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Diesel<br/>(litres)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LPG<br/>(litres)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Petrol<br/>(litres)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthlyDataBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Monthly rows will be generated by JavaScript -->
+                            </tbody>
+                            <tfoot class="bg-gray-100 font-semibold">
+                                <tr>
+                                    <td class="px-6 py-3">Total</td>
+                                    <td class="px-6 py-3" id="totalNaturalGas">0</td>
+                                    <td class="px-6 py-3" id="totalElectricity">0</td>
+                                    <td class="px-6 py-3" id="totalDiesel">0</td>
+                                    <td class="px-6 py-3" id="totalLPG">0</td>
+                                    <td class="px-6 py-3" id="totalPetrol">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-4 flex justify-end space-x-4 no-print">
+                        <button onclick="clearAllData()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Clear All Data</button>
+                        <button onclick="calculateEmissions()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Calculate Emissions</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Emission Factors Tab -->
+            <div id="factors-content" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-green-700">NGER Emission Factors</h3>
+                    
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold mb-2">Fuel Emission Factors</h4>
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fuel Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Energy Content</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CO₂ Factor</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CH₄ Factor</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">N₂O Factor</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-4">Natural Gas</td>
+                                    <td class="px-6 py-4">0.0393 GJ/m³</td>
+                                    <td class="px-6 py-4">51.53 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">0.1 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">0.03 kg CO₂-e/GJ</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4">Diesel</td>
+                                    <td class="px-6 py-4">38.6 GJ/kL</td>
+                                    <td class="px-6 py-4">69.9 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">0.1 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">0.5 kg CO₂-e/GJ</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4">LPG</td>
+                                    <td class="px-6 py-4">25.7 GJ/kL</td>
+                                    <td class="px-6 py-4">60.2 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">0.62 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">0.2 kg CO₂-e/GJ</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-4">Petrol</td>
+                                    <td class="px-6 py-4">34.2 GJ/kL</td>
+                                    <td class="px-6 py-4">67.4 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">0.79 kg CO₂-e/GJ</td>
+                                    <td class="px-6 py-4">1.8 kg CO₂-e/GJ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold mb-2">State Electricity Emission Factors (Scope 2)</h4>
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">State/Territory</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Emission Factor (kg CO₂-e/kWh)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr><td class="px-6 py-4">NSW</td><td class="px-6 py-4">0.68</td></tr>
+                                <tr><td class="px-6 py-4">VIC</td><td class="px-6 py-4">0.87</td></tr>
+                                <tr><td class="px-6 py-4">QLD</td><td class="px-6 py-4">0.73</td></tr>
+                                <tr><td class="px-6 py-4">SA</td><td class="px-6 py-4">0.31</td></tr>
+                                <tr><td class="px-6 py-4">WA</td><td class="px-6 py-4">0.64</td></tr>
+                                <tr><td class="px-6 py-4">TAS</td><td class="px-6 py-4">0.15</td></tr>
+                                <tr><td class="px-6 py-4">NT</td><td class="px-6 py-4">0.65</td></tr>
+                                <tr><td class="px-6 py-4">ACT</td><td class="px-6 py-4">0.68</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <p class="text-sm text-yellow-700">
+                            <strong>Note:</strong> These are placeholder emission factors. Please update with the latest official NGER Determination 
+                            and National Greenhouse Accounts (NGA) Factors before deployment.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Summary Tab -->
+            <div id="results-content" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-2xl font-bold mb-6 text-green-700">Annual Emissions Summary</h3>
+                    
+                    <!-- Key Metrics -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-green-50 p-6 rounded-lg">
+                            <h4 class="text-lg font-semibold text-green-800">Scope 1 Emissions</h4>
+                            <p class="text-3xl font-bold text-green-600 mt-2" id="scope1Total">0</p>
+                            <p class="text-sm text-gray-600">tonnes CO₂-e</p>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-6 rounded-lg">
+                            <h4 class="text-lg font-semibold text-blue-800">Scope 2 Emissions</h4>
+                            <p class="text-3xl font-bold text-blue-600 mt-2" id="scope2Total">0</p>
+                            <p class="text-sm text-gray-600">tonnes CO₂-e</p>
+                        </div>
+                        
+                        <div class="bg-purple-50 p-6 rounded-lg">
+                            <h4 class="text-lg font-semibold text-purple-800">Total Emissions</h4>
+                            <p class="text-3xl font-bold text-purple-600 mt-2" id="totalEmissions">0</p>
+                            <p class="text-sm text-gray-600">tonnes CO₂-e</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Energy Consumption -->
+                    <div class="mb-8">
+                        <h4 class="text-lg font-semibold mb-4">Total Energy Consumption</h4>
+                        <div class="bg-gray-50 p-4 rounded">
+                            <p class="text-2xl font-bold" id="totalEnergy">0</p>
+                            <p class="text-sm text-gray-600">Gigajoules (GJ)</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                            <h4 class="text-lg font-semibold mb-4">Emissions by Source</h4>
+                            <canvas id="emissionsChart" width="400" height="300"></canvas>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-lg font-semibold mb-4">Energy by Source</h4>
+                            <canvas id="energyChart" width="400" height="300"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Detailed Breakdown -->
+                    <div class="mb-8">
+                        <h4 class="text-lg font-semibold mb-4">Detailed Emissions Breakdown</h4>
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Source</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Annual Consumption</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Energy (GJ)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Emissions (t CO₂-e)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailedBreakdown" class="bg-white divide-y divide-gray-200">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Print and Export Buttons -->
+                    <div class="flex justify-end space-x-4 no-print">
+                        <button onclick="window.print()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                            Print Report
+                        </button>
+                        <button onclick="exportToCSV()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Export to CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for storing data
+        let monthlyData = {};
+        let calculatedEmissions = {};
+        
+        // NGER Emission Factors (placeholder values - to be updated with official factors)
+        const emissionFactors = {
+            naturalGas: {
+                energyContent: 0.0393, // GJ/m³
+                co2: 51.53, // kg CO₂-e/GJ
+                ch4: 0.1,   // kg CO₂-e/GJ
+                n2o: 0.03   // kg CO₂-e/GJ
+            },
+            diesel: {
+                energyContent: 38.6 / 1000, // GJ/L (converted from GJ/kL)
+                co2: 69.9,
+                ch4: 0.1,
+                n2o: 0.5
+            },
+            lpg: {
+                energyContent: 25.7 / 1000, // GJ/L
+                co2: 60.2,
+                ch4: 0.62,
+                n2o: 0.2
+            },
+            petrol: {
+                energyContent: 34.2 / 1000, // GJ/L
+                co2: 67.4,
+                ch4: 0.79,
+                n2o: 1.8
+            }
+        };
+        
+        // State electricity emission factors (kg CO₂-e/kWh)
+        const electricityFactors = {
+            'NSW': 0.68,
+            'VIC': 0.87,
+            'QLD': 0.73,
+            'SA': 0.31,
+            'WA': 0.64,
+            'TAS': 0.15,
+            'NT': 0.65,
+            'ACT': 0.68
+        };
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMonthlyTable();
+            loadSavedData();
+        });
+        
+        // Tab navigation
+        function showTab(tabName) {
+            // Hide all content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('border-green-600', 'text-green-600');
+                button.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Show selected content
+            document.getElementById(tabName + '-content').classList.remove('hidden');
+            
+            // Highlight active tab
+            const activeTab = document.getElementById(tabName + '-tab');
+            activeTab.classList.remove('border-transparent', 'text-gray-500');
+            activeTab.classList.add('border-green-600', 'text-green-600');
+            
+            // If showing results, update calculations
+            if (tabName === 'results') {
+                calculateEmissions();
+            }
+        }
+        
+        // Initialize monthly data table
+        function initializeMonthlyTable() {
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            const tbody = document.getElementById('monthlyDataBody');
+            tbody.innerHTML = '';
+            
+            months.forEach((month, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium">${month}</td>
+                    <td class="px-6 py-4"><input type="number" class="input-cell w-24 px-2 py-1 rounded" data-month="${index}" data-type="naturalGas" onchange="updateTotals()"></td>
+                    <td class="px-6 py-4"><input type="number" class="input-cell w-24 px-2 py-1 rounded" data-month="${index}" data-type="electricity" onchange="updateTotals()"></td>
+                    <td class="px-6 py-4"><input type="number" class="input-cell w-24 px-2 py-1 rounded" data-month="${index}" data-type="diesel" onchange="updateTotals()"></td>
+                    <td class="px-6 py-4"><input type="number" class="input-cell w-24 px-2 py-1 rounded" data-month="${index}" data-type="lpg" onchange="updateTotals()"></td>
+                    <td class="px-6 py-4"><input type="number" class="input-cell w-24 px-2 py-1 rounded" data-month="${index}" data-type="petrol" onchange="updateTotals()"></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Update totals
+        function updateTotals() {
+            const types = ['naturalGas', 'electricity', 'diesel', 'lpg', 'petrol'];
+            
+            types.forEach(type => {
+                let total = 0;
+                document.querySelectorAll(`input[data-type="${type}"]`).forEach(input => {
+                    total += parseFloat(input.value) || 0;
+                });
+                document.getElementById('total' + type.charAt(0).toUpperCase() + type.slice(1)).textContent = total.toFixed(1);
+            });
+            
+            // Save data to localStorage
+            saveData();
+        }
+        
+        // Calculate emissions
+        function calculateEmissions() {
+            const state = document.getElementById('facilityState').value;
+            if (!state) {
+                alert('Please select a state/territory to calculate electricity emissions');
+                showTab('facility');
+                return;
+            }
+            
+            // Collect monthly data
+            const types = ['naturalGas', 'electricity', 'diesel', 'lpg', 'petrol'];
+            let totals = {};
+            
+            types.forEach(type => {
+                totals[type] = 0;
+                document.querySelectorAll(`input[data-type="${type}"]`).forEach(input => {
+                    totals[type] += parseFloat(input.value) || 0;
+                });
+            });
+            
+            // Calculate Scope 1 emissions
+            let scope1Emissions = 0;
+            let totalEnergy = 0;
+            let breakdown = [];
+            
+            // Natural Gas
+            if (totals.naturalGas > 0) {
+                const energy = totals.naturalGas * emissionFactors.naturalGas.energyContent;
+                const emissions = energy * (emissionFactors.naturalGas.co2 + emissionFactors.naturalGas.ch4 + emissionFactors.naturalGas.n2o) / 1000;
+                scope1Emissions += emissions;
+                totalEnergy += energy;
+                breakdown.push({
+                    source: 'Natural Gas',
+                    scope: 1,
+                    consumption: totals.naturalGas + ' m³',
+                    energy: energy.toFixed(2),
+                    emissions: emissions.toFixed(3)
+                });
+            }
+            
+            // Diesel
+            if (totals.diesel > 0) {
+                const energy = totals.diesel * emissionFactors.diesel.energyContent;
+                const emissions = energy * (emissionFactors.diesel.co2 + emissionFactors.diesel.ch4 + emissionFactors.diesel.n2o) / 1000;
+                scope1Emissions += emissions;
+                totalEnergy += energy;
+                breakdown.push({
+                    source: 'Diesel',
+                    scope: 1,
+                    consumption: totals.diesel + ' L',
+                    energy: energy.toFixed(2),
+                    emissions: emissions.toFixed(3)
+                });
+            }
+            
+            // LPG
+            if (totals.lpg > 0) {
+                const energy = totals.lpg * emissionFactors.lpg.energyContent;
+                const emissions = energy * (emissionFactors.lpg.co2 + emissionFactors.lpg.ch4 + emissionFactors.lpg.n2o) / 1000;
+                scope1Emissions += emissions;
+                totalEnergy += energy;
+                breakdown.push({
+                    source: 'LPG',
+                    scope: 1,
+                    consumption: totals.lpg + ' L',
+                    energy: energy.toFixed(2),
+                    emissions: emissions.toFixed(3)
+                });
+            }
+            
+            // Petrol
+            if (totals.petrol > 0) {
+                const energy = totals.petrol * emissionFactors.petrol.energyContent;
+                const emissions = energy * (emissionFactors.petrol.co2 + emissionFactors.petrol.ch4 + emissionFactors.petrol.n2o) / 1000;
+                scope1Emissions += emissions;
+                totalEnergy += energy;
+                breakdown.push({
+                    source: 'Petrol',
+                    scope: 1,
+                    consumption: totals.petrol + ' L',
+                    energy: energy.toFixed(2),
+                    emissions: emissions.toFixed(3)
+                });
+            }
+            
+            // Calculate Scope 2 emissions (electricity)
+            let scope2Emissions = 0;
+            if (totals.electricity > 0) {
+                const elecFactor = electricityFactors[state];
+                scope2Emissions = totals.electricity * elecFactor / 1000;
+                const elecEnergy = totals.electricity * 0.0036; // Convert kWh to GJ
+                totalEnergy += elecEnergy;
+                breakdown.push({
+                    source: 'Electricity',
+                    scope: 2,
+                    consumption: totals.electricity + ' kWh',
+                    energy: elecEnergy.toFixed(2),
+                    emissions: scope2Emissions.toFixed(3)
+                });
+            }
+            
+            // Update display
+            document.getElementById('scope1Total').textContent = scope1Emissions.toFixed(2);
+            document.getElementById('scope2Total').textContent = scope2Emissions.toFixed(2);
+            document.getElementById('totalEmissions').textContent = (scope1Emissions + scope2Emissions).toFixed(2);
+            document.getElementById('totalEnergy').textContent = totalEnergy.toFixed(2);
+            
+            // Update detailed breakdown table
+            const tbody = document.getElementById('detailedBreakdown');
+            tbody.innerHTML = '';
+            breakdown.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4">${item.source}</td>
+                    <td class="px-6 py-4">Scope ${item.scope}</td>
+                    <td class="px-6 py-4">${item.consumption}</td>
+                    <td class="px-6 py-4">${item.energy} GJ</td>
+                    <td class="px-6 py-4">${item.emissions} t CO₂-e</td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Update charts
+            updateCharts(breakdown);
+            
+            // Store calculated emissions
+            calculatedEmissions = {
+                scope1: scope1Emissions,
+                scope2: scope2Emissions,
+                total: scope1Emissions + scope2Emissions,
+                totalEnergy: totalEnergy,
+                breakdown: breakdown
+            };
+        }
+        
+        // Update charts
+        function updateCharts(breakdown) {
+            // Emissions by source chart
+            const emissionsCtx = document.getElementById('emissionsChart').getContext('2d');
+            const emissionsData = {
+                labels: breakdown.map(item => item.source),
+                datasets: [{
+                    data: breakdown.map(item => parseFloat(item.emissions)),
+                    backgroundColor: [
+                        '#10b981', // green
+                        '#3b82f6', // blue
+                        '#f59e0b', // amber
+                        '#8b5cf6', // violet
+                        '#ef4444'  // red
+                    ]
+                }]
+            };
+            
+            new Chart(emissionsCtx, {
+                type: 'pie',
+                data: emissionsData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Emissions by Source (t CO₂-e)'
+                        }
+                    }
+                }
+            });
+            
+            // Energy by source chart
+            const energyCtx = document.getElementById('energyChart').getContext('2d');
+            const energyData = {
+                labels: breakdown.map(item => item.source),
+                datasets: [{
+                    data: breakdown.map(item => parseFloat(item.energy)),
+                    backgroundColor: [
+                        '#10b981', // green
+                        '#3b82f6', // blue
+                        '#f59e0b', // amber
+                        '#8b5cf6', // violet
+                        '#ef4444'  // red
+                    ]
+                }]
+            };
+            
+            new Chart(energyCtx, {
+                type: 'pie',
+                data: energyData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Energy Consumption by Source (GJ)'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Update electricity factor when state changes
+        function updateElectricityFactor() {
+            const state = document.getElementById('facilityState').value;
+            if (state && electricityFactors[state]) {
+                // Recalculate if we have data
+                if (document.getElementById('totalElectricity').textContent !== '0') {
+                    calculateEmissions();
+                }
+            }
+        }
+        
+        // Clear all data
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+                document.querySelectorAll('input[type="number"]').forEach(input => {
+                    input.value = '';
+                });
+                updateTotals();
+                localStorage.removeItem('alaGhgData');
+            }
+        }
+        
+        // Save data to localStorage
+        function saveData() {
+            const data = {
+                facilityName: document.getElementById('facilityName').value,
+                facilityState: document.getElementById('facilityState').value,
+                reportingYear: document.getElementById('reportingYear').value,
+                reportingPeriod: document.getElementById('reportingPeriod').value,
+                monthlyData: {}
+            };
+            
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                const month = input.dataset.month;
+                const type = input.dataset.type;
+                if (!data.monthlyData[month]) {
+                    data.monthlyData[month] = {};
+                }
+                data.monthlyData[month][type] = input.value || '';
+            });
+            
+            localStorage.setItem('alaGhgData', JSON.stringify(data));
+        }
+        
+        // Load saved data
+        function loadSavedData() {
+            const savedData = localStorage.getItem('alaGhgData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                
+                // Load facility info
+                document.getElementById('facilityName').value = data.facilityName || '';
+                document.getElementById('facilityState').value = data.facilityState || '';
+                document.getElementById('reportingYear').value = data.reportingYear || '';
+                document.getElementById('reportingPeriod').value = data.reportingPeriod || 'calendar';
+                
+                // Load monthly data
+                if (data.monthlyData) {
+                    Object.keys(data.monthlyData).forEach(month => {
+                        Object.keys(data.monthlyData[month]).forEach(type => {
+                            const input = document.querySelector(`input[data-month="${month}"][data-type="${type}"]`);
+                            if (input) {
+                                input.value = data.monthlyData[month][type];
+                            }
+                        });
+                    });
+                    updateTotals();
+                }
+            }
+        }
+        
+        // Export to CSV
+        function exportToCSV() {
+            if (!calculatedEmissions.breakdown) {
+                alert('Please calculate emissions first');
+                return;
+            }
+            
+            let csv = 'Australian Lubricant Association GHG Emissions Report\n';
+            csv += `Facility Name,${document.getElementById('facilityName').value}\n`;
+            csv += `State/Territory,${document.getElementById('facilityState').value}\n`;
+            csv += `Reporting Year,${document.getElementById('reportingYear').value}\n`;
+            csv += `\n`;
+            csv += `Summary\n`;
+            csv += `Scope 1 Emissions (t CO2-e),${calculatedEmissions.scope1.toFixed(2)}\n`;
+            csv += `Scope 2 Emissions (t CO2-e),${calculatedEmissions.scope2.toFixed(2)}\n`;
+            csv += `Total Emissions (t CO2-e),${calculatedEmissions.total.toFixed(2)}\n`;
+            csv += `Total Energy Consumption (GJ),${calculatedEmissions.totalEnergy.toFixed(2)}\n`;
+            csv += `\n`;
+            csv += `Detailed Breakdown\n`;
+            csv += `Source,Scope,Annual Consumption,Energy (GJ),Emissions (t CO2-e)\n`;
+            
+            calculatedEmissions.breakdown.forEach(item => {
+                csv += `${item.source},Scope ${item.scope},${item.consumption},${item.energy},${item.emissions}\n`;
+            });
+            
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'ALA_GHG_Emissions_Report.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>
