@@ -19,6 +19,7 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is specifica
 - Calculate emissions intensity (kg CO₂e per tonne of lubricant produced)
 - Export data to CSV format
 - Excel-style navigation with Tab and Enter key support
+- Give feedback functionality to contact ALA directly via email
 - Compliant with Australian NGER methodology
 
 ## Installation
@@ -27,7 +28,7 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is specifica
 
 No installation required! Simply:
 
-1. Download the latest calculator file (`ala-ghg-calculator-v4.1.html`)
+1. Download the latest calculator file (`ala-ghg-calculator-v4.3.html`)
 2. Double-click the file to open it in your web browser
 3. The calculator runs entirely in your browser - no server or internet connection needed
 
@@ -42,12 +43,12 @@ For organizational deployment:
    ```
 
 2. Deploy the HTML file to your web server:
-   - Copy `ala-ghg-calculator-v4.1.html` to your web server directory
+   - Copy `ala-ghg-calculator-v4.3.html` to your web server directory
    - Ensure the `ala_logo.png` file is in the same directory (if using external logo)
 
 3. Access through your web browser:
    ```
-   https://your-server.com/ala-ghg-calculator-v4.1.html
+   https://your-server.com/ala-ghg-calculator-v4.3.html
    ```
 
 ### Option 3: Local Development Server
@@ -74,7 +75,7 @@ For development or testing:
 
 3. Open your browser and navigate to:
    ```
-   http://localhost:8000/ala-ghg-calculator-v4.1.html
+   http://localhost:8000/ala-ghg-calculator-v4.3.html
    ```
 
 ## System Requirements
@@ -112,7 +113,9 @@ All calculations are performed locally in your browser. No data is sent to exter
 
 ## Version History
 
-- **v4.1** (Current) - Critical fixes for market-based Scope 2 calculations and Green Power double-counting prevention
+- **v4.3** (Current) - ALA Conference 2025 preview with Give Feedback functionality
+- **v4.2** - Enhanced with emission factors reference display
+- **v4.1** - Critical fixes for market-based Scope 2 calculations and Green Power double-counting prevention
 - **v4.0** - Updated with official NGA 2024 emission factors, added market-based reporting
 - **v3.3** - Enhanced PDF export functionality and UI improvements
 - **v3.2** - Previous stable version with table width optimizations
@@ -144,6 +147,18 @@ The calculator uses the latest emission factors from:
 - National Greenhouse and Energy Reporting (NGER) scheme
 - National Greenhouse Accounts Factors (NGA 2024 edition)
 - Clean Energy Regulator guidelines
+
+**Version 4.3 Updates (ALA Conference 2025 Preview)**:
+- Added "Give Feedback" button to action buttons row
+- Integrated mailto functionality for direct feedback to ALA (info@lubeassoc.com.au)
+- Pre-filled email template includes facility data, calculation results, and technical information
+- Enhanced user engagement and feedback collection capabilities
+
+**Version 4.2 Updates (Emission Factors Reference Display)**:
+- Added comprehensive emission factors reference display feature
+- New "View Emission Factors" button shows all factors with source information
+- Modal dialog includes NGA 2024 factors, state electricity factors, and common refrigerant GWP values
+- Print functionality for emission factors reference
 
 **Version 4.1 Updates (Technical Corrections & UX Improvements)**:
 - Fixed market-based Scope 2 calculations to use Australian residual mix factor (0.81 kg CO₂e/kWh)
