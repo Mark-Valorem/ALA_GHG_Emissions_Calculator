@@ -1,0 +1,73 @@
+{
+  "timestamp": "2025-09-01T04:01:59.754Z",
+  "calculator": "ala-ghg-calculator-v4.4.html",
+  "duration": "5867ms",
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "passRate": "100.0%"
+  },
+  "environment": {
+    "node": "v22.15.0",
+    "platform": "win32",
+    "cwd": "C:\\Users\\MarkAnderson\\Valorem\\Knowledge Hub - Documents\\Industry\\ALA\\Projects\\2505_Carbon Calculator\\ala_carbon_calculator"
+  },
+  "results": [
+    {
+      "testName": "Basic Data Entry",
+      "status": "PASSED",
+      "duration": "350ms",
+      "details": "All fields accept and retain data correctly"
+    },
+    {
+      "testName": "Natural Gas Calculation",
+      "status": "PASSED",
+      "expected": 2.025,
+      "actual": 2.03,
+      "accuracy": "99.75%",
+      "details": "Calculation accurate within 0.247%"
+    },
+    {
+      "testName": "NSW/ACT Electricity",
+      "status": "PASSED",
+      "expected": 6.6,
+      "actual": 6.6,
+      "factor": 0.66,
+      "details": "Factor: 0.66 kg CO₂e/kWh"
+    },
+    {
+      "testName": "Victoria Electricity",
+      "status": "PASSED",
+      "expected": 7.7,
+      "actual": 7.7,
+      "factor": 0.77,
+      "details": "Factor: 0.77 kg CO₂e/kWh"
+    },
+    {
+      "testName": "Queensland Electricity",
+      "status": "PASSED",
+      "expected": 7.1,
+      "actual": 7.1,
+      "factor": 0.71,
+      "details": "Factor: 0.71 kg CO₂e/kWh"
+    },
+    {
+      "testName": "South Australia Electricity",
+      "status": "PASSED",
+      "expected": 2.3,
+      "actual": 2.3,
+      "factor": 0.23,
+      "details": "Factor: 0.23 kg CO₂e/kWh"
+    },
+    {
+      "testName": "Tasmania Electricity",
+      "status": "PASSED",
+      "expected": 1.5,
+      "actual": 1.5,
+      "factor": 0.15,
+      "details": "Factor: 0.15 kg CO₂e/kWh"
+    }
+  ]
+}

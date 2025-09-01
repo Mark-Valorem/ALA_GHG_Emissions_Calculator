@@ -48,6 +48,12 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is a web-bas
 - `ALA_GHG_Emissions_Valorem Chemicals_2025 (1).xlsx` - Excel reports
 - `GHG Calculator_Next Steps.docx` - Strategic planning document
 
+### Testing Files
+- `tests/test-calculator.js` - Playwright automated test suite for calculator validation
+- `test-results/` - Directory containing JSON test reports with timestamps
+- `package.json` - Node.js dependencies (includes Playwright testing framework)
+- `package-lock.json` - Locked dependency versions for consistent testing
+
 ### Assets
 - `ala_logo.png` - ALA branding logo
 - Various logo conversion files (`logo.b64`, `logo_base64.txt`, etc.)
@@ -129,19 +135,52 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is a web-bas
 
 ## Testing Guidelines
 
-### Before Making Changes
-1. Backup current working version
-2. Test in multiple browsers (Chrome, Firefox, Edge)
-3. Verify calculations against known test cases
-4. Check mobile/tablet responsiveness
-5. Test print layouts (A4 portrait and landscape)
+### Automated Testing with Playwright
+**Primary Test Suite**: `tests/test-calculator.js`
+- **Framework**: Playwright with Chromium browser automation
+- **Coverage**: Data entry validation, emission calculations, state-specific factors
+- **Execution**: `node tests/test-calculator.js` (requires `npm install` first)
+- **Reports**: JSON reports saved to `test-results/` with timestamp and detailed results
 
-### Critical Test Cases
-- Enter data for all emission sources, verify calculations
-- Test market-based vs location-based Scope 2 methods
-- Verify state-specific electricity factors apply correctly
-- Check PDF generation and CSV export functionality
-- Test data persistence (save/reload in browser)
+### Test Suite Features
+- **Automatic Calculator Detection**: Finds and tests latest calculator version automatically
+- **Comprehensive Validation**: 
+  - Basic data entry and form functionality
+  - Natural gas calculation accuracy (validates against NGA 2024 factors)
+  - State-specific electricity factors for all Australian states
+- **Results Tracking**: 
+  - Pass/fail status for each test
+  - Calculation accuracy percentages
+  - Performance timing data
+  - Detailed error reporting
+
+### Running Tests
+```bash
+# Install dependencies (first time only)
+npm install
+
+# Run the complete test suite
+node tests/test-calculator.js
+
+# View latest test results
+# Results are automatically saved to test-results/ folder
+```
+
+### Before Making Changes
+1. **Run existing test suite** to establish baseline
+2. Backup current working version
+3. Test in multiple browsers (Chrome, Firefox, Edge)
+4. **Re-run automated tests** after changes to catch regressions
+5. Check mobile/tablet responsiveness
+6. Test print layouts (A4 portrait and landscape)
+
+### Critical Test Cases (Automated)
+- ✅ Basic data entry and field validation
+- ✅ Natural gas emission calculations (NGA 2024 factors)
+- ✅ State-specific electricity factors (NSW, VIC, QLD, SA, TAS)
+- 📋 Market-based vs location-based Scope 2 methods (manual)
+- 📋 PDF generation and CSV export functionality (manual)
+- 📋 Data persistence (save/reload in browser) (manual)
 
 ## Common Development Tasks
 
@@ -149,7 +188,8 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is a web-bas
 1. Locate emission factors in JavaScript section (search for "EMISSION_FACTORS")
 2. Update values with latest NGA factors
 3. Document source and date in comments
-4. Test all calculations after changes
+4. **Run automated test suite to verify calculations**
+5. Update test expected values if factors have legitimately changed
 
 ### Adding New Emission Sources
 1. Update HTML form with new input fields
@@ -157,6 +197,7 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is a web-bas
 3. Add emission factors for new sources
 4. Update calculation functions
 5. Modify report templates to include new sources
+6. **Add test cases to automated suite for new sources**
 
 ### UI/UX Improvements
 1. Use Tailwind CSS classes for consistency
@@ -172,11 +213,13 @@ The Australian Lubricant Association (ALA) GHG Emissions Calculator is a web-bas
 - Archive older versions in `Archive/` folder
 
 ### Quality Assurance
-1. Code review for accuracy and security
-2. User testing with representative facilities
-3. Cross-browser compatibility testing
-4. Print/export functionality verification
-5. Documentation updates
+1. **Run automated test suite** (`node tests/test-calculator.js`)
+2. Code review for accuracy and security
+3. User testing with representative facilities
+4. Cross-browser compatibility testing
+5. Print/export functionality verification
+6. Documentation updates
+7. **Verify test results show 100% pass rate** before deployment
 
 ## Support & Maintenance
 
@@ -222,4 +265,4 @@ Based on the ILMA GHG Calculator model, adapted with permission for Australian f
 **For User Support**: Contact ALA through official channels
 **For Bug Reports**: Document clearly with screenshots and browser details
 
-*Last Updated: August 2025*
+*Last Updated: September 2025*
